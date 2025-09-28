@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
   trailingSlash: true,
   skipTrailingSlashRedirect: true,
   distDir: 'out',
+  assetPrefix: process.env.NODE_ENV === 'production' ? '/threadspace_FE' : '',
   /* config options here */
   turbopack: {
     rules: {
