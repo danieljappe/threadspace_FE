@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: 'export',
+  trailingSlash: true,
   /* config options here */
   turbopack: {
     rules: {
@@ -11,6 +13,7 @@ const nextConfig: NextConfig = {
     },
   },
   images: {
+    unoptimized: true,
     domains: ['localhost', 'via.placeholder.com'],
     remotePatterns: [
       {

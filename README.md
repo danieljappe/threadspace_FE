@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # ThreadSpace Frontend
 
 A modern React-based frontend application built with Next.js 15, TypeScript, and Tailwind CSS for the ThreadSpace discussion platform.
@@ -306,3 +307,6 @@ The development server supports hot reloading for:
 - [Chakra UI Documentation](https://chakra-ui.com)
 - [Apollo Client Documentation](https://www.apollographql.com/docs/react)
 - [TypeScript Documentation](https://www.typescriptlang.org/docs)
+=======
+# threadspace_FE
+>>>>>>> a601b59e88cf607dadfa191c5408ec4a8e765a3b
