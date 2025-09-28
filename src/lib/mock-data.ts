@@ -415,7 +415,7 @@ export const getMockPosts = (filters?: {
 
   if (filters?.topicId) {
     posts = posts.filter(post => 
-      post.topics.some(topic => topic.id === filters.topicId)
+      post.topics?.some(topic => topic.id === filters.topicId)
     );
   }
 

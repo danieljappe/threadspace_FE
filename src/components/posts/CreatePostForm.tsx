@@ -80,12 +80,12 @@ export const CreatePostForm: React.FC<CreatePostFormProps> = ({
     topicIds: initialTopicId ? [initialTopicId] : []
   });
   
-  const [selectedTopics, setSelectedTopics] = useState<string[]>(formData.topicIds);
+  const [selectedTopics, setSelectedTopics] = useState<string[]>(formData.topicIds || []);
   const [error, setError] = useState('');
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   
   // Get topics from the query result
-  const topics: Topic[] = topicsData?.topics?.edges?.map((edge: any) => edge.node) || [];
+  const topics: Topic[] = topicsData?.topics?.edges?.map((edge: { node: Topic }) => edge.node) || [];
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;

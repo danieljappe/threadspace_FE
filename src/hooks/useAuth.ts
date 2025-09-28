@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { useMutation } from '@apollo/client/react';
 import { User, AuthPayload, LoginInput, RegisterInput } from '@/types';
 import { LOGIN, REGISTER, LOGOUT, REFRESH_TOKEN } from '@/graphql/mutations';
@@ -30,19 +30,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [logoutMutation] = useMutation(LOGOUT);
   const [refreshTokenMutation] = useMutation(REFRESH_TOKEN);
 
-  // Get mock data
-  let mockData: any = null;
-  try {
-    mockData = useMockData();
-  } catch {
-    // MockDataProvider not available, will use GraphQL only
-  }
+  // Get mock data - moved to top level to avoid conditional hook calls
+  const mockData = useMockData();
 
-  useEffect(() => {
-    checkAuthStatus();
-  }, []);
-
-  const checkAuthStatus = async () => {
+  const checkAuthStatus = useCallback(async () => {
     try {
       if (!isAuthenticated()) {
         setLoading(false);
@@ -67,8 +58,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Use mock data as fallback
           if (mockData) {
             const mockUser = mockData.getCurrentUser();
-            setUser(mockUser);
-            setUseMock(true);
+            if (mockUser) {
+              setUser(mockUser);
+              setUseMock(true);
+            }
           }
         }
       }
@@ -78,26 +71,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Use mock data as fallback
       if (mockData) {
         const mockUser = mockData.getCurrentUser();
-        setUser(mockUser);
-        setUseMock(true);
+        if (mockUser) {
+          setUser(mockUser);
+          setUseMock(true);
+        }
       }
     } finally {
       setLoading(false);
     }
-  };
+  }, [mockData]);
+
+  useEffect(() => {
+    checkAuthStatus();
+  }, [checkAuthStatus]);
 
   const login = async (input: LoginInput): Promise<AuthPayload> => {
     try {
       if (useMock && mockData) {
         // Mock login
         const mockUser = mockData.getCurrentUser();
-        const mockPayload: AuthPayload = {
-          accessToken: 'mock-token',
-          refreshToken: 'mock-refresh-token',
-          user: mockUser
-        };
-        setUser(mockUser);
-        return mockPayload;
+        if (mockUser) {
+          const mockPayload: AuthPayload = {
+            accessToken: 'mock-token',
+            refreshToken: 'mock-refresh-token',
+            user: mockUser
+          };
+          setUser(mockUser);
+          return mockPayload;
+        }
       }
 
       const { data } = await loginMutation({
@@ -120,14 +121,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Only fallback to mock data for network errors, not authentication errors
       if (mockData && error instanceof Error && error.message?.includes('Network error')) {
         const mockUser = mockData.getCurrentUser();
-        const mockPayload: AuthPayload = {
-          accessToken: 'mock-token',
-          refreshToken: 'mock-refresh-token',
-          user: mockUser
-        };
-        setUser(mockUser);
-        setUseMock(true);
-        return mockPayload;
+        if (mockUser) {
+          const mockPayload: AuthPayload = {
+            accessToken: 'mock-token',
+            refreshToken: 'mock-refresh-token',
+            user: mockUser
+          };
+          setUser(mockUser);
+          setUseMock(true);
+          return mockPayload;
+        }
       }
       throw error;
     }
@@ -138,13 +141,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (useMock && mockData) {
         // Mock register
         const mockUser = mockData.getCurrentUser();
-        const mockPayload: AuthPayload = {
-          accessToken: 'mock-token',
-          refreshToken: 'mock-refresh-token',
-          user: mockUser
-        };
-        setUser(mockUser);
-        return mockPayload;
+        if (mockUser) {
+          const mockPayload: AuthPayload = {
+            accessToken: 'mock-token',
+            refreshToken: 'mock-refresh-token',
+            user: mockUser
+          };
+          setUser(mockUser);
+          return mockPayload;
+        }
       }
 
       const { data } = await registerMutation({
@@ -167,14 +172,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Only fallback to mock data for network errors, not validation errors
       if (mockData && error instanceof Error && error.message?.includes('Network error')) {
         const mockUser = mockData.getCurrentUser();
-        const mockPayload: AuthPayload = {
-          accessToken: 'mock-token',
-          refreshToken: 'mock-refresh-token',
-          user: mockUser
-        };
-        setUser(mockUser);
-        setUseMock(true);
-        return mockPayload;
+        if (mockUser) {
+          const mockPayload: AuthPayload = {
+            accessToken: 'mock-token',
+            refreshToken: 'mock-refresh-token',
+            user: mockUser
+          };
+          setUser(mockUser);
+          setUseMock(true);
+          return mockPayload;
+        }
       }
       throw error;
     }
@@ -198,13 +205,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       if (useMock && mockData) {
         const mockUser = mockData.getCurrentUser();
-        const mockPayload: AuthPayload = {
-          accessToken: 'mock-token',
-          refreshToken: 'mock-refresh-token',
-          user: mockUser
-        };
-        setUser(mockUser);
-        return mockPayload;
+        if (mockUser) {
+          const mockPayload: AuthPayload = {
+            accessToken: 'mock-token',
+            refreshToken: 'mock-refresh-token',
+            user: mockUser
+          };
+          setUser(mockUser);
+          return mockPayload;
+        }
       }
 
       const { data } = await refreshTokenMutation();

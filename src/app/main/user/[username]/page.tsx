@@ -9,15 +9,16 @@ import { PostList } from '@/components/posts/PostList';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
-import { Loader2, AlertCircle, User, Calendar, Award, MessageSquare } from 'lucide-react';
+import { Loader2, AlertCircle, Calendar, Award, MessageSquare } from 'lucide-react';
 import { PostOrder } from '@/lib/constants';
 import { formatDate } from '@/lib/utils';
+import { User } from '@/types';
 
 export default function UserProfilePage() {
   const params = useParams();
   const username = params.username as string;
   const mockData = useMockData();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [useMock, setUseMock] = useState(false);
@@ -105,7 +106,7 @@ export default function UserProfilePage() {
             User not found
           </h3>
           <p className="text-gray-600 dark:text-gray-400 text-center">
-            The user you're looking for doesn't exist.
+            The user you&apos;re looking for doesn&apos;t exist.
           </p>
         </CardContent>
       </Card>

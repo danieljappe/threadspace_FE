@@ -74,7 +74,7 @@ export function generateSlug(text: string): string {
     .replace(/^-+|-+$/g, '');
 }
 
-export function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends (...args: unknown[]) => unknown>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void {
@@ -85,7 +85,7 @@ export function debounce<T extends (...args: any[]) => any>(
   };
 }
 
-export function throttle<T extends (...args: any[]) => any>(
+export function throttle<T extends (...args: unknown[]) => unknown>(
   func: T,
   limit: number
 ): (...args: Parameters<T>) => void {
@@ -140,21 +140,27 @@ export function copyToClipboard(text: string): Promise<void> {
   }
 }
 
-export function getErrorMessage(error: any): string {
+export function getErrorMessage(error: unknown): string {
   if (typeof error === 'string') {
     return error;
   }
   
-  if (error?.message) {
-    return error.message;
+  if (error && typeof error === 'object' && 'message' in error) {
+    return (error as { message: string }).message;
   }
   
-  if (error?.graphQLErrors?.[0]?.message) {
-    return error.graphQLErrors[0].message;
+  if (error && typeof error === 'object' && 'graphQLErrors' in error) {
+    const graphqlError = error as { graphQLErrors?: Array<{ message: string }> };
+    if (graphqlError.graphQLErrors?.[0]?.message) {
+      return graphqlError.graphQLErrors[0].message;
+    }
   }
   
-  if (error?.networkError?.message) {
-    return error.networkError.message;
+  if (error && typeof error === 'object' && 'networkError' in error) {
+    const networkError = error as { networkError?: { message: string } };
+    if (networkError.networkError?.message) {
+      return networkError.networkError.message;
+    }
   }
   
   return 'An unexpected error occurred';

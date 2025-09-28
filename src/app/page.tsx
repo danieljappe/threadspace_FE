@@ -11,7 +11,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { ROUTES, PostOrder } from '@/lib/constants';
 import { useDebounce } from '@/hooks/useDebounce';
 import { Search, Plus, Filter } from 'lucide-react';
-import Link from 'next/link';
 
 export default function HomePage() {
   const { user } = useAuth();

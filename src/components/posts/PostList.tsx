@@ -61,7 +61,7 @@ export const PostList: React.FC<PostListProps> = ({
     } else if (data?.posts?.edges) {
       // Use real data
       setUseMock(false);
-      const realPosts = data.posts.edges.map((edge: any) => edge.node);
+      const realPosts = data.posts.edges.map((edge: { node: Post }) => edge.node);
       setPosts(realPosts);
       setLoading(false);
     } else if (!graphqlLoading) {
@@ -79,13 +79,13 @@ export const PostList: React.FC<PostListProps> = ({
     }
   }, [data, graphqlError, graphqlLoading, topicId, authorId, search, orderBy, mockData]);
 
-  const hasNextPage = false; // Mock data doesn't support pagination for now
+  const hasNextPage = false; // Mock data doesn&apos;t support pagination for now
 
   const { lastElementRef } = useInfiniteScroll({
     hasNextPage,
     loading,
     onLoadMore: () => {
-      // Mock data doesn't support pagination
+      // Mock data doesn&apos;t support pagination
     }
   });
 

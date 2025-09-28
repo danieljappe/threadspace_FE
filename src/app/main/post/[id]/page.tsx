@@ -9,12 +9,13 @@ import { PostCard } from '@/components/posts/PostCard';
 import { CommentTree } from '@/components/comments/CommentTree';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Loader2, AlertCircle } from 'lucide-react';
+import { Post } from '@/types';
 
 export default function PostPage() {
   const params = useParams();
   const postId = params.id as string;
   const mockData = useMockData();
-  const [post, setPost] = useState<any>(null);
+  const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [useMock, setUseMock] = useState(false);
@@ -101,7 +102,7 @@ export default function PostPage() {
             Post not found
           </h3>
           <p className="text-gray-600 dark:text-gray-400 text-center">
-            The post you're looking for doesn't exist or has been deleted.
+            The post you&apos;re looking for doesn&apos;t exist or has been deleted.
           </p>
         </CardContent>
       </Card>

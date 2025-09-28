@@ -59,7 +59,7 @@ export interface Notification {
   id: string;
   userId: string;
   type: string;
-  data: Record<string, any>;
+  data: Record<string, unknown>;
   isRead: boolean;
   createdAt: string;
 }
@@ -230,6 +230,8 @@ export interface CommentItemProps {
   comment: Comment;
   onVote: (voteType: VoteType) => void;
   onReply: (parentId: string) => void;
+  onCommentUpdated?: (updatedComment: Comment) => void;
+  onCommentDeleted?: (commentId: string) => void;
 }
 
 export interface PostEditorProps {

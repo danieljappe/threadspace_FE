@@ -10,13 +10,13 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Loader2, AlertCircle, Hash, Users, Plus } from 'lucide-react';
 import { ROUTES, PostOrder } from '@/lib/constants';
-import Link from 'next/link';
+import { Topic } from '@/types';
 
 export default function TopicPage() {
   const params = useParams();
   const slug = params.slug as string;
   const mockData = useMockData();
-  const [topic, setTopic] = useState<any>(null);
+  const [topic, setTopic] = useState<Topic | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [useMock, setUseMock] = useState(false);
@@ -104,7 +104,7 @@ export default function TopicPage() {
             Topic not found
           </h3>
           <p className="text-gray-600 dark:text-gray-400 text-center">
-            The topic you're looking for doesn't exist.
+            The topic you&apos;re looking for doesn&apos;t exist.
           </p>
         </CardContent>
       </Card>
@@ -151,7 +151,7 @@ export default function TopicPage() {
             
             <div className="flex items-center space-x-2">
               <Button
-                variant={topic.isSubscribed ? "default" : "outline"}
+                variant={topic.isSubscribed ? "primary" : "outline"}
                 size="sm"
               >
                 {topic.isSubscribed ? 'Subscribed' : 'Subscribe'}

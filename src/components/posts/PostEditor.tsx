@@ -69,7 +69,7 @@ export const PostEditor: React.FC<PostEditorProps> = ({
     title: post.title,
     content: post.content,
     threadType: post.threadType,
-    topicIds: post.topics.map(topic => topic.id)
+    topicIds: post.topics?.map(topic => topic.id) || []
   });
   
   const [selectedTopics, setSelectedTopics] = useState<string[]>(formData.topicIds || []);
@@ -163,7 +163,7 @@ export const PostEditor: React.FC<PostEditorProps> = ({
     formData.title !== post.title ||
     formData.content !== post.content ||
     formData.threadType !== post.threadType ||
-    JSON.stringify(formData.topicIds?.sort()) !== JSON.stringify(post.topics.map(t => t.id).sort());
+    JSON.stringify(formData.topicIds?.sort()) !== JSON.stringify(post.topics?.map(t => t.id).sort() || []);
 
   return (
     <Card className={className}>
@@ -265,7 +265,7 @@ export const PostEditor: React.FC<PostEditorProps> = ({
                 Select topics to help others find your post (at least one required)
               </p>
               <div className="flex flex-wrap gap-2">
-                {post.topics.map((topic) => (
+                {post.topics?.map((topic) => (
                   <button
                     key={topic.id}
                     type="button"

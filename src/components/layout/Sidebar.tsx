@@ -49,7 +49,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     } else if (data?.topics?.edges) {
       // Use real data
       setUseMock(false);
-      const realTopics = data.topics.edges.map((edge: any) => edge.node);
+      const realTopics = data.topics.edges.map((edge: { node: Topic }) => edge.node);
       setTopics(realTopics);
       setLoading(false);
     } else if (!graphqlLoading && user) {
@@ -118,7 +118,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     leftIcon={<Search className="h-4 w-4" />}
-                    size="sm"
                   />
                 </div>
 
@@ -169,7 +168,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
                 {!loading && topics.length === 0 && searchQuery && (
                   <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
-                    No topics found for "{searchQuery}"
+                    No topics found for &quot;{searchQuery}&quot;
                   </p>
                 )}
               </div>

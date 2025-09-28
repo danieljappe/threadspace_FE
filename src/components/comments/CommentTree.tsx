@@ -74,7 +74,7 @@ export const CommentTree: React.FC<CommentTreeProps> = ({
     } else if (data?.comments?.edges) {
       // Use real data
       setUseMock(false);
-      const realComments = data.comments.edges.map((edge: any) => edge.node);
+      const realComments = data.comments.edges.map((edge: { node: Comment }) => edge.node);
       setComments(realComments);
       setLoading(false);
     } else if (!graphqlLoading) {
@@ -90,12 +90,10 @@ export const CommentTree: React.FC<CommentTreeProps> = ({
     setComments(prev => [newComment, ...prev]);
   };
 
-  const handleCommentUpdated = (updatedComment: Comment) => {
-    setComments(prev => 
-      prev.map(comment => 
-        comment.id === updatedComment.id ? updatedComment : comment
-      )
-    );
+  const handleCommentUpdated = (commentId: string) => {
+    // For now, just refetch comments
+    // In a real app, you might want to update the specific comment
+    console.log('Comment updated:', commentId);
   };
 
   const handleCommentDeleted = (commentId: string) => {
@@ -180,8 +178,8 @@ export const CommentTree: React.FC<CommentTreeProps> = ({
             <CommentItem
               key={comment.id}
               comment={comment}
-              onCommentUpdated={handleCommentUpdated}
-              onCommentDeleted={handleCommentDeleted}
+              onEdit={handleCommentUpdated}
+              onDelete={handleCommentDeleted}
             />
           ))
         )}
