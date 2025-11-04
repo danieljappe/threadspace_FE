@@ -111,6 +111,7 @@ export interface PostEdge {
 export interface CommentConnection {
   edges: CommentEdge[];
   pageInfo: PageInfo;
+  totalCount: number;
 }
 
 export interface CommentEdge {

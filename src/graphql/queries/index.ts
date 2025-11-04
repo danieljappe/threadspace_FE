@@ -154,6 +154,7 @@ export const GET_POST = gql`
           hasNextPage
           hasPreviousPage
         }
+        totalCount
       }
     }
   }

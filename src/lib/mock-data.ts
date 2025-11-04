@@ -138,7 +138,8 @@ What are your thoughts on using TypeScript with React? Share your experiences be
       pageInfo: {
         hasNextPage: false,
         hasPreviousPage: false
-      }
+      },
+      totalCount: 0
     },
     voteCount: 45,
     userVote: VoteType.UPVOTE,
@@ -181,7 +182,8 @@ What technologies are you most excited about? Let's discuss!`,
       pageInfo: {
         hasNextPage: false,
         hasPreviousPage: false
-      }
+      },
+      totalCount: 0
     },
     voteCount: 32,
     userVote: undefined,
@@ -229,7 +231,8 @@ Have you encountered any specific GraphQL performance challenges?`,
       pageInfo: {
         hasNextPage: false,
         hasPreviousPage: false
-      }
+      },
+      totalCount: 0
     },
     voteCount: 67,
     userVote: VoteType.UPVOTE,
@@ -276,7 +279,8 @@ What's your experience with Next.js 15? Any issues during migration?`,
       pageInfo: {
         hasNextPage: false,
         hasPreviousPage: false
-      }
+      },
+      totalCount: 0
     },
     voteCount: 89,
     userVote: undefined,
@@ -324,7 +328,8 @@ What are your favorite React component patterns?`,
       pageInfo: {
         hasNextPage: false,
         hasPreviousPage: false
-      }
+      },
+      totalCount: 0
     },
     voteCount: 23,
     userVote: VoteType.DOWNVOTE,
@@ -350,7 +355,8 @@ export const mockComments: Comment[] = [
       pageInfo: {
         hasNextPage: false,
         hasPreviousPage: false
-      }
+      },
+      totalCount: 0
     },
     voteCount: 12,
     userVote: VoteType.UPVOTE,
@@ -370,7 +376,8 @@ export const mockComments: Comment[] = [
       pageInfo: {
         hasNextPage: false,
         hasPreviousPage: false
-      }
+      },
+      totalCount: 0
     },
     voteCount: 5,
     userVote: undefined,
@@ -390,7 +397,8 @@ export const mockComments: Comment[] = [
       pageInfo: {
         hasNextPage: false,
         hasPreviousPage: false
-      }
+      },
+      totalCount: 0
     },
     voteCount: 8,
     userVote: VoteType.UPVOTE,

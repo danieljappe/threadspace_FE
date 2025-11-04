@@ -97,7 +97,7 @@ export const ROUTES = {
   LOGIN: '/auth/login',
   REGISTER: '/auth/register',
   CREATE_POST: '/main/create',
-  POST: (id: string) => `/main/post/${id}`,
+  POST: (id: string) => `/main/post?id=${id}`,
   TOPIC: (slug: string) => `/main/topic/${slug}`,
   USER: (username: string) => `/main/user/${username}`,
   PROFILE: '/main/profile',
