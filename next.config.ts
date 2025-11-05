@@ -1,11 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: 'export',
+  // Remove 'export' output for server deployment (needed for WebSocket subscriptions)
+  // output: 'export', // Only use for static export deployments
   trailingSlash: true,
   skipTrailingSlashRedirect: true,
-  distDir: 'out',
-  assetPrefix: process.env.NODE_ENV === 'production' ? '/threadspace_FE' : '',
+  distDir: '.next', // Default Next.js build directory for server deployment
+  // assetPrefix: process.env.NODE_ENV === 'production' ? '/threadspace_FE' : '', // Not needed for Render
   /* config options here */
   turbopack: {
     rules: {

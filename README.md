@@ -119,8 +119,8 @@ Create a `.env.local` file in the frontend directory:
 
 ```env
 # GraphQL Configuration
-NEXT_PUBLIC_GRAPHQL_URI=http://localhost:4000/graphql
-NEXT_PUBLIC_WS_URI=ws://localhost:4000/graphql
+NEXT_PUBLIC_GRAPHQL_URI=http://localhost:8080/graphql
+NEXT_PUBLIC_WS_URI=ws://localhost:8080/graphql
 
 # Application URLs
 NEXT_PUBLIC_FRONTEND_URL=http://localhost:3000

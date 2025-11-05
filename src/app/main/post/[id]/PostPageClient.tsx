@@ -1,16 +1,18 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { useQuery } from '@apollo/client/react';
+import { useQuery, useMutation } from '@apollo/client/react';
 import { GET_POST } from '@/graphql/queries';
-import { Post } from '@/types';
+import { VOTE, REMOVE_VOTE } from '@/graphql/mutations';
+import { Post, VoteType } from '@/types';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { CommentTree } from '@/components/comments/CommentTree';
 import { VoteButtons } from '@/components/ui/VoteButtons';
 import { Avatar } from '@/components/ui/Avatar';
 import { Loader2, AlertCircle, ArrowLeft, Bookmark, Eye, Calendar } from 'lucide-react';
 import { ROUTES, ERROR_MESSAGES } from '@/lib/constants';
+import { usePostSSE } from '@/hooks/usePostSSE';
 import Link from 'next/link';
 
 interface PostPageClientProps {
@@ -19,10 +21,67 @@ interface PostPageClientProps {
 
 export function PostPageClient({ postId }: PostPageClientProps) {
   const router = useRouter();
+  const [voteCount, setVoteCount] = useState<number | null>(null);
+  const [userVote, setUserVote] = useState<VoteType | null | undefined>(undefined);
 
-  const { data, loading, error } = useQuery<{ post: Post }>(GET_POST, {
+  const { data, loading, error, refetch } = useQuery<{ post: Post }>(GET_POST, {
     variables: { id: postId },
     errorPolicy: 'all',
+  });
+
+  const [voteMutation] = useMutation(VOTE);
+  const [removeVoteMutation] = useMutation(REMOVE_VOTE);
+
+  // Set initial vote state from query data
+  useEffect(() => {
+    if (data?.post) {
+      if (voteCount === null) {
+        setVoteCount(data.post.voteCount);
+      }
+      if (userVote === undefined) {
+        setUserVote(data.post.userVote);
+      }
+    }
+  }, [data?.post, voteCount, userVote]);
+
+  // Memoize callbacks to prevent unnecessary re-renders and connection drops
+  const handleVoteUpdate = useCallback((update: { voteCount: number }) => {
+    console.log('[PostPageClient] Vote update received via SSE:', update);
+    setVoteCount(update.voteCount);
+    // Note: SSE updates don't include the current user's vote, so we don't update userVote from SSE
+    // The userVote will be updated when the user themselves votes
+  }, []);
+
+  const handleCommentAdded = useCallback((comment: any) => {
+    console.log('[PostPageClient] Comment added via SSE:', comment);
+    // Refetch the post to update comment count
+    // The CommentTree component will handle adding the comment to the list
+    refetch().catch(err => {
+      console.error('[PostPageClient] Failed to refetch post after comment:', err);
+    });
+  }, [refetch]);
+
+  const handleCommentDeleted = useCallback((comment: any) => {
+    console.log('[PostPageClient] Comment deleted via SSE:', comment);
+    // Refetch the post to update comment count
+    refetch().catch(err => {
+      console.error('[PostPageClient] Failed to refetch post after comment deletion:', err);
+    });
+  }, [refetch]);
+
+  const handleSSEError = useCallback((error: Error) => {
+    console.error('[PostPageClient] SSE error:', error);
+  }, []);
+
+  // Connect to SSE for live updates (votes, comments)
+  // Enable SSE as soon as we have a postId, don't wait for data to load
+  usePostSSE({
+    postId,
+    onVoteUpdate: handleVoteUpdate,
+    onCommentAdded: handleCommentAdded,
+    onCommentDeleted: handleCommentDeleted,
+    onError: handleSSEError,
+    enabled: !!postId, // Enable as long as we have a postId
   });
 
   useEffect(() => {
@@ -189,11 +248,40 @@ export function PostPageClient({ postId }: PostPageClientProps) {
             {/* Actions */}
             <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
               <VoteButtons
-                voteCount={post.voteCount}
-                userVote={post.userVote}
-                onVote={(voteType) => {
-                  // TODO: Implement vote mutation
-                  console.log('Vote:', voteType);
+                voteCount={voteCount ?? post.voteCount}
+                userVote={userVote !== undefined ? (userVote ?? undefined) : post.userVote}
+                onVote={async (voteType) => {
+                  try {
+                    const currentVote = userVote !== undefined ? (userVote ?? undefined) : post.userVote;
+                    
+                    // If clicking the same vote type, remove the vote
+                    if (currentVote === voteType) {
+                      await removeVoteMutation({
+                        variables: {
+                          targetId: post.id,
+                          targetType: 'POST',
+                        },
+                      });
+                      setUserVote(null);
+                      // SSE will update the vote count automatically
+                    } else {
+                      // Otherwise, cast the vote
+                      const result = await voteMutation({
+                        variables: {
+                          targetId: post.id,
+                          targetType: 'POST',
+                          voteType,
+                        },
+                      });
+                      
+                      if (result.data?.vote) {
+                        setVoteCount(result.data.vote.voteCount);
+                        setUserVote(result.data.vote.userVote);
+                      }
+                    }
+                  } catch (error) {
+                    console.error('Vote failed:', error);
+                  }
                 }}
                 size="lg"
                 orientation="horizontal"

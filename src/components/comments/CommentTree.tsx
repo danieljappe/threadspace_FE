@@ -1,14 +1,14 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useQuery, useSubscription } from '@apollo/client/react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useQuery } from '@apollo/client/react';
 import { CommentItem } from './CommentItem';
 import { CommentForm } from './CommentForm';
 import { useAuth } from '@/hooks/useAuth';
 import { useMockData } from '@/lib/mock-provider';
+import { usePostSSE } from '@/hooks/usePostSSE';
 import { GET_COMMENTS } from '@/graphql/queries';
-import { COMMENT_ADDED } from '@/graphql/subscriptions';
-import { Comment } from '@/types';
+import { Comment, VoteType } from '@/types';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Loader2, AlertCircle } from 'lucide-react';
 
@@ -40,27 +40,116 @@ export const CommentTree: React.FC<CommentTreeProps> = ({
     errorPolicy: 'all'
   });
 
-  // Subscribe to real-time comment updates
-  const { data: subscriptionData } = useSubscription(COMMENT_ADDED, {
-    variables: { postId },
-    skip: useMock, // Skip if using mock data
-    onSubscriptionData: ({ subscriptionData }) => {
-      if (subscriptionData?.data?.commentAdded) {
-        const newComment = subscriptionData.data.commentAdded;
-        
-        // Only add the comment if it matches the current parentId filter
-        if ((!parentId && !newComment.parent) || (parentId && newComment.parent?.id === parentId)) {
-          setComments(prev => {
-            // Check if comment already exists to avoid duplicates
-            const exists = prev.some(comment => comment.id === newComment.id);
-            if (!exists) {
-              return [newComment, ...prev];
-            }
-            return prev;
-          });
+  // Handle new comments from SSE
+  const handleCommentAdded = useCallback((commentData: {
+    id: string;
+    content: string;
+    author: { id: string; username: string; avatarUrl?: string };
+    postId: string;
+    parentId?: string | null;
+    depth?: number;
+    createdAt: string;
+  }) => {
+    console.log('[CommentTree] Comment added via SSE:', commentData);
+    
+    // Only add the comment if it matches the current parentId filter
+    const commentParentId = commentData.parentId || null;
+    if ((!parentId && !commentParentId) || (parentId && commentParentId === parentId)) {
+      // Convert SSE comment format to Comment type
+      const newComment: Comment = {
+        id: commentData.id,
+        content: commentData.content,
+        author: {
+          id: commentData.author.id,
+          username: commentData.author.username,
+          avatarUrl: commentData.author.avatarUrl,
+          email: '', // Not provided by SSE
+          reputation: 0, // Not provided by SSE
+          isVerified: false, // Not provided by SSE
+          createdAt: '',
+          updatedAt: '',
+        },
+        post: {
+          id: commentData.postId,
+        } as any,
+        parent: commentParentId ? { id: commentParentId } as any : undefined,
+        depth: commentData.depth ?? (commentParentId ? 1 : 0),
+        voteCount: 0,
+        userVote: undefined,
+        isEdited: false,
+        createdAt: commentData.createdAt,
+        updatedAt: commentData.createdAt,
+        replies: {
+          edges: [],
+          pageInfo: { hasNextPage: false, hasPreviousPage: false },
+          totalCount: 0,
+        },
+      };
+      
+      setComments(prev => {
+        // Check if comment already exists to avoid duplicates
+        const exists = prev.some(comment => comment.id === newComment.id);
+        if (!exists) {
+          console.log('[CommentTree] Adding new comment to list:', newComment.id);
+          return [newComment, ...prev];
         }
-      }
+        console.log('[CommentTree] Comment already exists, skipping:', newComment.id);
+        return prev;
+      });
+    } else {
+      console.log('[CommentTree] Comment filtered out (wrong parent):', {
+        commentParentId,
+        currentParentId: parentId
+      });
     }
+  }, [parentId]);
+
+  // Handle comment deletions from SSE
+  const handleCommentDeleted = useCallback((commentData: { id: string; postId: string; parentId?: string | null }) => {
+    console.log('[CommentTree] Comment deleted via SSE:', commentData);
+    
+    // Only remove if it matches the current parentId filter
+    const commentParentId = commentData.parentId || null;
+    if ((!parentId && !commentParentId) || (parentId && commentParentId === parentId)) {
+      setComments(prev => {
+        const filtered = prev.filter(comment => comment.id !== commentData.id);
+        if (filtered.length !== prev.length) {
+          console.log('[CommentTree] Removed deleted comment:', commentData.id);
+        }
+        return filtered;
+      });
+    } else {
+      console.log('[CommentTree] Comment deletion filtered out (wrong parent):', {
+        commentParentId,
+        currentParentId: parentId
+      });
+    }
+  }, [parentId]);
+
+  // Handle comment votes from SSE
+  const handleCommentVoteUpdate = useCallback((update: { targetId: string; targetType: string; voteCount: number; userVote?: any }) => {
+    console.log('[CommentTree] Comment vote update received via SSE:', update);
+    
+    // Only update if it's a comment vote
+    if (update.targetType === 'comment') {
+      setComments(prev => prev.map(comment => {
+        if (comment.id === update.targetId) {
+          // Only update voteCount from SSE (like post voting does)
+          // userVote is managed by the mutation response, not SSE
+          return { ...comment, voteCount: update.voteCount };
+        }
+        return comment;
+      }));
+    }
+  }, []);
+
+  // Connect to SSE for live comment updates (only for top-level comments or matching parent)
+  usePostSSE({
+    postId,
+    onCommentAdded: handleCommentAdded,
+    onCommentDeleted: handleCommentDeleted,
+    onVoteUpdate: handleCommentVoteUpdate,
+    enabled: !useMock && !!postId, // Only enable if not using mock data
   });
 
   useEffect(() => {
@@ -86,18 +175,23 @@ export const CommentTree: React.FC<CommentTreeProps> = ({
     }
   }, [data, graphqlError, graphqlLoading, postId, parentId, mockData]);
 
-  const handleCommentAdded = (newComment: Comment) => {
-    setComments(prev => [newComment, ...prev]);
-  };
-
   const handleCommentUpdated = (commentId: string) => {
     // For now, just refetch comments
     // In a real app, you might want to update the specific comment
     console.log('Comment updated:', commentId);
   };
 
-  const handleCommentDeleted = (commentId: string) => {
+  const handleLocalCommentDeleted = (commentId: string) => {
     setComments(prev => prev.filter(comment => comment.id !== commentId));
+  };
+
+  const handleCommentVote = (commentId: string, voteType: VoteType | null) => {
+    // Update the comment's userVote locally when user votes
+    setComments(prev => prev.map(comment => 
+      comment.id === commentId
+        ? { ...comment, userVote: voteType || undefined }
+        : comment
+    ));
   };
 
   if (loading) {
@@ -178,8 +272,9 @@ export const CommentTree: React.FC<CommentTreeProps> = ({
             <CommentItem
               key={comment.id}
               comment={comment}
+              onVote={handleCommentVote}
               onEdit={handleCommentUpdated}
-              onDelete={handleCommentDeleted}
+              onDelete={handleLocalCommentDeleted}
             />
           ))
         )}

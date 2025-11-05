@@ -6,7 +6,8 @@ import { Comment, VoteType } from '@/types';
 import { VoteButtons } from '@/components/ui/VoteButtons';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
-import { VOTE, UPDATE_COMMENT, DELETE_COMMENT } from '@/graphql/mutations';
+import { useAuth } from '@/hooks/useAuth';
+import { VOTE, REMOVE_VOTE, UPDATE_COMMENT, DELETE_COMMENT } from '@/graphql/mutations';
 import { formatDate, formatNumber } from '@/lib/utils';
 import { ROUTES } from '@/lib/constants';
 import { 
@@ -37,27 +38,60 @@ export const CommentItem: React.FC<CommentItemProps> = ({
   onDelete,
   className
 }) => {
+  const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(comment.content);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showActions, setShowActions] = useState(false);
 
   const [voteMutation] = useMutation(VOTE);
+  const [removeVoteMutation] = useMutation(REMOVE_VOTE);
   const [updateComment, { loading: updating }] = useMutation(UPDATE_COMMENT);
   const [deleteComment, { loading: deleting }] = useMutation(DELETE_COMMENT);
 
+  // Check if current user is the author
+  const isAuthor = user?.id === comment.author.id;
+
   const handleVote = async (voteType: VoteType) => {
     try {
-      await voteMutation({
-        variables: {
-          targetId: comment.id,
-          targetType: 'COMMENT',
-          voteType
+      const currentVote = comment.userVote;
+      
+      // If clicking the same vote type, remove the vote
+      if (currentVote === voteType) {
+        const result = await removeVoteMutation({
+          variables: {
+            targetId: comment.id,
+            targetType: 'COMMENT'
+          }
+        });
+        // Update local comment state
+        if (onVote) {
+          // Let parent know vote was removed (SSE will update voteCount)
+          onVote(comment.id, null as any);
         }
-      });
-      onVote?.(comment.id, voteType);
-    } catch (error) {
-      console.error('Vote failed:', error);
+      } else {
+        // Otherwise, cast/update the vote
+        const result = await voteMutation({
+          variables: {
+            targetId: comment.id,
+            targetType: 'COMMENT',
+            voteType
+          }
+        });
+        
+        // Update local comment state if mutation returned data
+        if (result.data?.vote && onVote) {
+          onVote(comment.id, voteType);
+        }
+      }
+    } catch (error: any) {
+      // If vote not found error when removing, it might have already been removed
+      // This can happen with race conditions - SSE will sync the state
+      if (error?.message?.includes('not found') || error?.graphQLErrors?.[0]?.message?.includes('not found')) {
+        console.log('[CommentItem] Vote not found (may be race condition), SSE will sync state');
+      } else {
+        console.error('Vote failed:', error);
+      }
     }
   };
 
@@ -201,34 +235,36 @@ export const CommentItem: React.FC<CommentItemProps> = ({
                   <span className="text-sm">Reply</span>
                 </button>
                 
-                <div className="relative">
-                  <button
-                    onClick={() => setShowActions(!showActions)}
-                    className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                  >
-                    <MoreHorizontal className="h-4 w-4" />
-                  </button>
-                  
-                  {showActions && (
-                    <div className="absolute right-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-10">
-                      <button
-                        onClick={handleEdit}
-                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      >
-                        <Edit className="h-4 w-4 mr-3" />
-                        Edit
-                      </button>
-                      <button
-                        onClick={handleDelete}
-                        disabled={deleting}
-                        className="flex items-center w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50"
-                      >
-                        <Trash2 className="h-4 w-4 mr-3" />
-                        {deleting ? 'Deleting...' : 'Delete'}
-                      </button>
-                    </div>
-                  )}
-                </div>
+                {isAuthor && (
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowActions(!showActions)}
+                      className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </button>
+                    
+                    {showActions && (
+                      <div className="absolute right-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-10">
+                        <button
+                          onClick={handleEdit}
+                          className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        >
+                          <Edit className="h-4 w-4 mr-3" />
+                          Edit
+                        </button>
+                        <button
+                          onClick={handleDelete}
+                          disabled={deleting}
+                          className="flex items-center w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50"
+                        >
+                          <Trash2 className="h-4 w-4 mr-3" />
+                          {deleting ? 'Deleting...' : 'Delete'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}

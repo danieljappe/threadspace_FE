@@ -2,8 +2,8 @@ export const APP_NAME = 'ThreadSpace';
 export const APP_DESCRIPTION = 'A modern discussion platform for long-form conversations';
 
 export const API_ENDPOINTS = {
-  GRAPHQL: process.env.NEXT_PUBLIC_GRAPHQL_URI || 'http://localhost:4000/graphql',
-  WS: process.env.NEXT_PUBLIC_WS_URI || 'ws://localhost:4000/graphql',
+  GRAPHQL: process.env.NEXT_PUBLIC_GRAPHQL_URI || 'http://localhost:8080/graphql',
+  WS: process.env.NEXT_PUBLIC_WS_URI || 'ws://localhost:8080/graphql',
 } as const;
 
 export const PAGINATION = {
