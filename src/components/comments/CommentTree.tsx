@@ -8,7 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useMockData } from '@/lib/mock-provider';
 import { usePostSSE } from '@/hooks/usePostSSE';
 import { GET_COMMENTS } from '@/graphql/queries';
-import { Comment, VoteType, User, Post } from '@/types';
+import { Comment, VoteType, User, Post, ThreadType } from '@/types';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Loader2, AlertCircle } from 'lucide-react';
 
@@ -74,7 +74,7 @@ export const CommentTree: React.FC<CommentTreeProps> = ({
         title: '',
         content: '',
         author: authorUser,
-        threadType: 'DISCUSSION' as const,
+        threadType: ThreadType.DISCUSSION,
         views: 0,
         topics: [],
         comments: { edges: [], pageInfo: { hasNextPage: false, hasPreviousPage: false }, totalCount: 0 },
