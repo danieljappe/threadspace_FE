@@ -8,7 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useMockData } from '@/lib/mock-provider';
 import { usePostSSE } from '@/hooks/usePostSSE';
 import { GET_COMMENTS } from '@/graphql/queries';
-import { Comment, VoteType } from '@/types';
+import { Comment, VoteType, User, Post } from '@/types';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Loader2, AlertCircle } from 'lucide-react';
 
@@ -56,62 +56,53 @@ export const CommentTree: React.FC<CommentTreeProps> = ({
     const commentParentId = commentData.parentId || null;
     if ((!parentId && !commentParentId) || (parentId && commentParentId === parentId)) {
       // Convert SSE comment format to Comment type
+      // Create a complete User object for the author
+      const authorUser: User = {
+        id: commentData.author.id,
+        username: commentData.author.username,
+        avatarUrl: commentData.author.avatarUrl,
+        email: '', // Not provided by SSE
+        reputation: 0, // Not provided by SSE
+        isVerified: false, // Not provided by SSE
+        createdAt: '',
+        updatedAt: '',
+      };
+
+      // Create a minimal Post object for the comment
+      const postForComment: Post = {
+        id: commentData.postId,
+        title: '',
+        content: '',
+        author: authorUser,
+        threadType: 'DISCUSSION' as const,
+        views: 0,
+        topics: [],
+        comments: { edges: [], pageInfo: { hasNextPage: false, hasPreviousPage: false }, totalCount: 0 },
+        voteCount: 0,
+        bookmarked: false,
+        isPinned: false,
+        isLocked: false,
+        createdAt: '',
+        updatedAt: '',
+      };
+
       const newComment: Comment = {
         id: commentData.id,
         content: commentData.content,
-        author: {
-          id: commentData.author.id,
-          username: commentData.author.username,
-          avatarUrl: commentData.author.avatarUrl,
-          email: '', // Not provided by SSE
-          reputation: 0, // Not provided by SSE
-          isVerified: false, // Not provided by SSE
-          createdAt: '',
-          updatedAt: '',
-        },
-        post: {
-          id: commentData.postId,
-          title: '',
-          content: '',
-          author: commentData.author,
-          threadType: 'DISCUSSION' as const,
-          views: 0,
-          topics: [],
-          comments: { edges: [], pageInfo: { hasNextPage: false, hasPreviousPage: false }, totalCount: 0 },
-          voteCount: 0,
-          bookmarked: false,
-          isPinned: false,
-          isLocked: false,
-          createdAt: '',
-          updatedAt: '',
-        } as Comment['post'],
+        author: authorUser,
+        post: postForComment,
         parent: commentParentId ? {
           id: commentParentId,
           content: '',
-          author: commentData.author,
+          author: authorUser,
           depth: 0,
-          post: {
-            id: commentData.postId,
-            title: '',
-            content: '',
-            author: commentData.author,
-            threadType: 'DISCUSSION' as const,
-            views: 0,
-            topics: [],
-            comments: { edges: [], pageInfo: { hasNextPage: false, hasPreviousPage: false }, totalCount: 0 },
-            voteCount: 0,
-            bookmarked: false,
-            isPinned: false,
-            isLocked: false,
-            createdAt: '',
-            updatedAt: '',
-          },
+          post: postForComment,
           replies: { edges: [], pageInfo: { hasNextPage: false, hasPreviousPage: false }, totalCount: 0 },
           voteCount: 0,
           isEdited: false,
           createdAt: '',
           updatedAt: '',
-        } as Comment['parent'] : undefined,
+        } : undefined,
         depth: commentData.depth ?? (commentParentId ? 1 : 0),
         voteCount: 0,
         userVote: undefined,
