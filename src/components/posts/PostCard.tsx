@@ -50,9 +50,11 @@ export const PostCard: React.FC<PostCardProps> = ({
   const handleVoteUpdate = useCallback((update: { voteCount: number; userVote?: 'UPVOTE' | 'DOWNVOTE' | null }) => {
     setVoteCount(update.voteCount);
     // Only update userVote if it's provided (SSE updates for other users' votes won't include userVote)
-    // Convert null to undefined to match state type
-    if (update.userVote !== undefined) {
-      setUserVote(update.userVote ?? undefined);
+    // Convert string literals to VoteType enum and null to undefined
+    if (update.userVote !== undefined && update.userVote !== null) {
+      setUserVote(update.userVote as VoteType);
+    } else if (update.userVote === null) {
+      setUserVote(undefined);
     }
   }, []);
 
