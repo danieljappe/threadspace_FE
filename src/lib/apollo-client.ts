@@ -1,31 +1,16 @@
 'use client';
 
-import { ApolloClient, InMemoryCache, createHttpLink, from, split } from '@apollo/client';
+import { ApolloClient, InMemoryCache, createHttpLink, from } from '@apollo/client';
 import { setContext } from '@apollo/client/link/context';
 import { onError } from '@apollo/client/link/error';
-import { getMainDefinition } from '@apollo/client/utilities';
-import { GraphQLWsLink } from '@apollo/client/link/subscriptions';
-import { createClient } from 'graphql-ws';
 import { API_ENDPOINTS, STORAGE_KEYS } from './constants';
 
-// HTTP Link
+// HTTP Link for all GraphQL operations (queries and mutations)
+// Real-time updates use SSE via usePostSSE hook instead of WebSocket subscriptions
 const httpLink = createHttpLink({
   uri: API_ENDPOINTS.GRAPHQL,
   credentials: 'include',
 });
-
-// WebSocket Link for subscriptions
-const wsClient = createClient({
-  url: API_ENDPOINTS.WS,
-  connectionParams: () => {
-    const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
-    return {
-      authorization: token ? `Bearer ${token}` : '',
-    };
-  },
-});
-
-const wsLink = new GraphQLWsLink(wsClient);
 
 // Auth Link
 const authLink = setContext((_, { headers }) => {
@@ -227,22 +212,10 @@ const cache = new InMemoryCache({
   },
 });
 
-// Split link to route queries and subscriptions
-const splitLink = split(
-  ({ query }) => {
-    const definition = getMainDefinition(query);
-    return (
-      definition.kind === 'OperationDefinition' &&
-      definition.operation === 'subscription'
-    );
-  },
-  wsLink,
-  from([errorLink, authLink, httpLink])
-);
-
 // Create Apollo Client
+// Note: Subscriptions are handled via SSE (Server-Sent Events) using usePostSSE hook
 export const apolloClient = new ApolloClient({
-  link: splitLink,
+  link: from([errorLink, authLink, httpLink]),
   cache,
   defaultOptions: {
     watchQuery: {

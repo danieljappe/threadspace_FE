@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Remove 'export' output for server deployment (needed for WebSocket subscriptions)
+  // Remove 'export' output for server deployment (needed for SSE real-time updates)
   // output: 'export', // Only use for static export deployments
   trailingSlash: true,
   skipTrailingSlashRedirect: true,

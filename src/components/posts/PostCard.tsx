@@ -1,15 +1,15 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import Link from 'next/link';
-import { useMutation, useSubscription } from '@apollo/client/react';
+import { useMutation } from '@apollo/client/react';
 import { Post, VoteType } from '@/types';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { VoteButtons } from '@/components/ui/VoteButtons';
 import { Avatar } from '@/components/ui/Avatar';
 import { VOTE, BOOKMARK_POST, UNBOOKMARK_POST } from '@/graphql/mutations';
-import { VOTE_UPDATED } from '@/graphql/subscriptions';
+import { usePostSSE } from '@/hooks/usePostSSE';
 import { formatDate, formatNumber, truncateText } from '@/lib/utils';
 import { ROUTES } from '@/lib/constants';
 import { 
@@ -46,16 +46,20 @@ export const PostCard: React.FC<PostCardProps> = ({
   const [bookmarkMutation] = useMutation(BOOKMARK_POST);
   const [unbookmarkMutation] = useMutation(UNBOOKMARK_POST);
 
-  // Subscribe to real-time vote updates for this post
-  useSubscription(VOTE_UPDATED, {
-    variables: { postId: post.id },
-    onSubscriptionData: ({ subscriptionData }) => {
-      if (subscriptionData.data?.voteUpdated) {
-        const { voteCount: newVoteCount, userVote: newUserVote } = subscriptionData.data.voteUpdated;
-        setVoteCount(newVoteCount);
-        setUserVote(newUserVote);
-      }
+  // Handle real-time vote updates via SSE
+  const handleVoteUpdate = useCallback((update: { voteCount: number; userVote?: VoteType | null }) => {
+    setVoteCount(update.voteCount);
+    // Only update userVote if it's provided (SSE updates for other users' votes won't include userVote)
+    if (update.userVote !== undefined) {
+      setUserVote(update.userVote);
     }
+  }, []);
+
+  // Subscribe to real-time vote updates for this post via SSE
+  usePostSSE({
+    postId: post.id,
+    onVoteUpdate: handleVoteUpdate,
+    enabled: true,
   });
 
   const handleVote = async (voteType: VoteType) => {
