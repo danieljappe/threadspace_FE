@@ -11,7 +11,6 @@ import { VOTE, REMOVE_VOTE, UPDATE_COMMENT, DELETE_COMMENT } from '@/graphql/mut
 import { formatDate, formatNumber } from '@/lib/utils';
 import { ROUTES } from '@/lib/constants';
 import { 
-  MessageCircle, 
   MoreHorizontal, 
   Edit, 
   Trash2, 
@@ -67,7 +66,7 @@ export const CommentItem: React.FC<CommentItemProps> = ({
         // Update local comment state
         if (onVote) {
           // Let parent know vote was removed (SSE will update voteCount)
-          onVote(comment.id, null as any);
+          // Note: onVote doesn't accept null, but vote removal is handled by SSE
         }
       } else {
         // Otherwise, cast/update the vote
@@ -84,10 +83,12 @@ export const CommentItem: React.FC<CommentItemProps> = ({
           onVote(comment.id, voteType);
         }
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       // If vote not found error when removing, it might have already been removed
       // This can happen with race conditions - SSE will sync the state
-      if (error?.message?.includes('not found') || error?.graphQLErrors?.[0]?.message?.includes('not found')) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const graphQLError = (error as { graphQLErrors?: Array<{ message?: string }> })?.graphQLErrors?.[0]?.message;
+      if (errorMessage?.includes('not found') || graphQLError?.includes('not found')) {
         console.log('[CommentItem] Vote not found (may be race condition), SSE will sync state');
       } else {
         console.error('Vote failed:', error);

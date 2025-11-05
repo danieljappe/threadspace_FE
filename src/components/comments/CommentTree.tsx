@@ -71,8 +71,47 @@ export const CommentTree: React.FC<CommentTreeProps> = ({
         },
         post: {
           id: commentData.postId,
-        } as any,
-        parent: commentParentId ? { id: commentParentId } as any : undefined,
+          title: '',
+          content: '',
+          author: commentData.author,
+          threadType: 'DISCUSSION' as const,
+          views: 0,
+          topics: [],
+          comments: { edges: [], pageInfo: { hasNextPage: false, hasPreviousPage: false }, totalCount: 0 },
+          voteCount: 0,
+          bookmarked: false,
+          isPinned: false,
+          isLocked: false,
+          createdAt: '',
+          updatedAt: '',
+        } as Comment['post'],
+        parent: commentParentId ? {
+          id: commentParentId,
+          content: '',
+          author: commentData.author,
+          depth: 0,
+          post: {
+            id: commentData.postId,
+            title: '',
+            content: '',
+            author: commentData.author,
+            threadType: 'DISCUSSION' as const,
+            views: 0,
+            topics: [],
+            comments: { edges: [], pageInfo: { hasNextPage: false, hasPreviousPage: false }, totalCount: 0 },
+            voteCount: 0,
+            bookmarked: false,
+            isPinned: false,
+            isLocked: false,
+            createdAt: '',
+            updatedAt: '',
+          },
+          replies: { edges: [], pageInfo: { hasNextPage: false, hasPreviousPage: false }, totalCount: 0 },
+          voteCount: 0,
+          isEdited: false,
+          createdAt: '',
+          updatedAt: '',
+        } as Comment['parent'] : undefined,
         depth: commentData.depth ?? (commentParentId ? 1 : 0),
         voteCount: 0,
         userVote: undefined,
@@ -127,7 +166,7 @@ export const CommentTree: React.FC<CommentTreeProps> = ({
   }, [parentId]);
 
   // Handle comment votes from SSE
-  const handleCommentVoteUpdate = useCallback((update: { targetId: string; targetType: string; voteCount: number; userVote?: any }) => {
+  const handleCommentVoteUpdate = useCallback((update: { targetId: string; targetType: string; voteCount: number; userVote?: VoteType | null }) => {
     console.log('[CommentTree] Comment vote update received via SSE:', update);
     
     // Only update if it's a comment vote

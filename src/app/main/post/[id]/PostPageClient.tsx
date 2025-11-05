@@ -52,7 +52,7 @@ export function PostPageClient({ postId }: PostPageClientProps) {
     // The userVote will be updated when the user themselves votes
   }, []);
 
-  const handleCommentAdded = useCallback((comment: any) => {
+  const handleCommentAdded = useCallback((comment: { id: string; content: string; author: { id: string; username: string; avatarUrl?: string }; postId: string; parentId?: string | null; depth?: number; createdAt: string }) => {
     console.log('[PostPageClient] Comment added via SSE:', comment);
     // Refetch the post to update comment count
     // The CommentTree component will handle adding the comment to the list
@@ -61,7 +61,7 @@ export function PostPageClient({ postId }: PostPageClientProps) {
     });
   }, [refetch]);
 
-  const handleCommentDeleted = useCallback((comment: any) => {
+  const handleCommentDeleted = useCallback((comment: { id: string; postId: string; parentId?: string | null }) => {
     console.log('[PostPageClient] Comment deleted via SSE:', comment);
     // Refetch the post to update comment count
     refetch().catch(err => {
