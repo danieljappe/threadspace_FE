@@ -262,7 +262,7 @@ export function PostPageClient({ postId }: PostPageClientProps) {
                           targetType: 'POST',
                         },
                       });
-                      setUserVote(null);
+                      setUserVote(undefined);
                       // SSE will update the vote count automatically
                     } else {
                       // Otherwise, cast the vote
