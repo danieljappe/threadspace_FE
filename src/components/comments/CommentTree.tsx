@@ -157,7 +157,7 @@ export const CommentTree: React.FC<CommentTreeProps> = ({
   }, [parentId]);
 
   // Handle comment votes from SSE
-  const handleCommentVoteUpdate = useCallback((update: { targetId: string; targetType: string; voteCount: number; userVote?: VoteType | null }) => {
+  const handleCommentVoteUpdate = useCallback((update: { targetId: string; targetType: string; voteCount: number; userVote?: 'UPVOTE' | 'DOWNVOTE' | null }) => {
     console.log('[CommentTree] Comment vote update received via SSE:', update);
     
     // Only update if it's a comment vote
