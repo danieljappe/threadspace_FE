@@ -47,7 +47,7 @@ export const PostCard: React.FC<PostCardProps> = ({
   const [unbookmarkMutation] = useMutation(UNBOOKMARK_POST);
 
   // Handle real-time vote updates via SSE
-  const handleVoteUpdate = useCallback((update: { voteCount: number; userVote?: VoteType | null }) => {
+  const handleVoteUpdate = useCallback((update: { voteCount: number; userVote?: 'UPVOTE' | 'DOWNVOTE' | null }) => {
     setVoteCount(update.voteCount);
     // Only update userVote if it's provided (SSE updates for other users' votes won't include userVote)
     // Convert null to undefined to match state type
