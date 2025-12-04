@@ -1,14 +1,15 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useQuery } from '@apollo/client/react';
+import React, { useCallback } from 'react';
+import { useQuery, NetworkStatus } from '@apollo/client';
 import { Post, PostOrder } from '@/types';
 import { PostCard } from './PostCard';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { GET_POSTS } from '@/graphql/queries';
-import { useMockData } from '@/lib/mock-provider';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Loader2, AlertCircle } from 'lucide-react';
+
+const POSTS_PER_PAGE = 10;
 
 interface PostListProps {
   topicId?: string;
@@ -25,71 +26,63 @@ export const PostList: React.FC<PostListProps> = ({
   orderBy = PostOrder.NEWEST,
   className
 }) => {
-  const mockData = useMockData();
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [useMock, setUseMock] = useState(false);
-
-  // Try GraphQL query first
-  const { data, loading: graphqlLoading, error: graphqlError } = useQuery(GET_POSTS, {
+  // GraphQL query with cursor-based pagination
+  const { data, loading, error, fetchMore, networkStatus } = useQuery(GET_POSTS, {
     variables: {
       topicId,
       authorId,
       search,
       orderBy,
-      first: 20
+      first: POSTS_PER_PAGE
     },
     notifyOnNetworkStatusChange: true,
     errorPolicy: 'all'
   });
 
-  useEffect(() => {
-    if (graphqlError) {
-      // If GraphQL fails, use mock data
-      console.log('GraphQL failed, using mock data:', graphqlError.message);
-      setUseMock(true);
-      const mockPosts = mockData.getPosts({
-        topicId,
-        authorId,
-        search,
-        orderBy,
-        limit: 20
-      });
-      setPosts(mockPosts);
-      setLoading(false);
-    } else if (data?.posts?.edges) {
-      // Use real data
-      setUseMock(false);
-      const realPosts = data.posts.edges.map((edge: { node: Post }) => edge.node);
-      setPosts(realPosts);
-      setLoading(false);
-    } else if (!graphqlLoading) {
-      // If no data and not loading, use mock data
-      setUseMock(true);
-      const mockPosts = mockData.getPosts({
-        topicId,
-        authorId,
-        search,
-        orderBy,
-        limit: 20
-      });
-      setPosts(mockPosts);
-      setLoading(false);
-    }
-  }, [data, graphqlError, graphqlLoading, topicId, authorId, search, orderBy, mockData]);
+  const isFetchingMore = networkStatus === NetworkStatus.fetchMore;
+  const isInitialLoading = loading && !isFetchingMore;
+  
+  // Extract posts and pagination info from data
+  const posts: Post[] = data?.posts?.edges?.map((edge: { node: Post }) => edge.node) || [];
+  const hasNextPage = data?.posts?.pageInfo?.hasNextPage ?? false;
+  const endCursor = data?.posts?.pageInfo?.endCursor;
 
-  const hasNextPage = false; // Mock data doesn&apos;t support pagination for now
+  // Load more posts handler
+  const handleLoadMore = useCallback(() => {
+    if (!hasNextPage || isFetchingMore || !endCursor) return;
 
+    fetchMore({
+      variables: {
+        after: endCursor,
+        first: POSTS_PER_PAGE
+      },
+      updateQuery: (prevResult, { fetchMoreResult }) => {
+        if (!fetchMoreResult) return prevResult;
+
+        return {
+          posts: {
+            __typename: 'PostConnection',
+            edges: [
+              ...prevResult.posts.edges,
+              ...fetchMoreResult.posts.edges
+            ],
+            pageInfo: fetchMoreResult.posts.pageInfo,
+            totalCount: fetchMoreResult.posts.totalCount
+          }
+        };
+      }
+    });
+  }, [hasNextPage, isFetchingMore, endCursor, fetchMore]);
+
+  // Infinite scroll hook
   const { lastElementRef } = useInfiniteScroll({
     hasNextPage,
-    loading,
-    onLoadMore: () => {
-      // Mock data doesn&apos;t support pagination
-    }
+    loading: isFetchingMore,
+    onLoadMore: handleLoadMore
   });
 
-  if (loading && posts.length === 0) {
+  // Loading skeleton for initial load
+  if (isInitialLoading) {
     return (
       <div className={`space-y-4 ${className}`}>
         {[...Array(5)].map((_, i) => (
@@ -114,7 +107,8 @@ export const PostList: React.FC<PostListProps> = ({
     );
   }
 
-  if (error) {
+  // Error state
+  if (error && posts.length === 0) {
     return (
       <Card className={className}>
         <CardContent className="flex flex-col items-center justify-center py-12">
@@ -123,7 +117,7 @@ export const PostList: React.FC<PostListProps> = ({
             Failed to load posts
           </h3>
           <p className="text-gray-600 dark:text-gray-400 text-center mb-4">
-            {error}
+            {error.message}
           </p>
           <button
             onClick={() => window.location.reload()}
@@ -136,7 +130,8 @@ export const PostList: React.FC<PostListProps> = ({
     );
   }
 
-  if (posts.length === 0) {
+  // Empty state
+  if (!isInitialLoading && posts.length === 0) {
     return (
       <Card className={className}>
         <CardContent className="flex flex-col items-center justify-center py-12">
@@ -161,14 +156,6 @@ export const PostList: React.FC<PostListProps> = ({
 
   return (
     <div className={`space-y-4 ${className}`}>
-      {useMock && (
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
-          <p className="text-sm text-blue-800 dark:text-blue-200">
-            📡 Using mock data - GraphQL API is not available
-          </p>
-        </div>
-      )}
-      
       {posts.map((post: Post, index: number) => (
         <div
           key={post.id}
@@ -178,13 +165,23 @@ export const PostList: React.FC<PostListProps> = ({
         </div>
       ))}
       
-      {loading && posts.length > 0 && (
+      {/* Loading more indicator */}
+      {isFetchingMore && (
         <Card>
           <CardContent className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-blue-600 mr-2" />
             <span className="text-gray-600 dark:text-gray-400">Loading more posts...</span>
           </CardContent>
         </Card>
+      )}
+
+      {/* End of list indicator */}
+      {!hasNextPage && posts.length > 0 && (
+        <div className="text-center py-8">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            You&apos;ve reached the end
+          </p>
+        </div>
       )}
     </div>
   );

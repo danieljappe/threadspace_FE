@@ -227,7 +227,11 @@ export const PostCard: React.FC<PostCardProps> = ({
             >
               <MessageCircle className="h-4 w-4" />
               <span className="text-sm">
-                {post.comments.pageInfo.hasNextPage ? 'View comments' : 'No comments'}
+                {post.comments?.totalCount !== undefined 
+                  ? `${formatNumber(post.comments.totalCount)} ${post.comments.totalCount === 1 ? 'comment' : 'comments'}`
+                  : post.comments?.pageInfo?.hasNextPage 
+                    ? 'View comments' 
+                    : 'No comments'}
               </span>
             </Link>
             

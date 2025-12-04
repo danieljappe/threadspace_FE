@@ -206,6 +206,7 @@ export const GET_POSTS = gql`
             color
           }
           comments(first: 0) {
+            totalCount
             pageInfo {
               hasNextPage
             }
@@ -219,6 +220,7 @@ export const GET_POSTS = gql`
         startCursor
         endCursor
       }
+      totalCount
     }
   }
 `;
