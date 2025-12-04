@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery } from '@apollo/client/react';
 import { CommentItem } from './CommentItem';
 import { CommentForm } from './CommentForm';
@@ -8,19 +8,125 @@ import { useAuth } from '@/hooks/useAuth';
 import { useMockData } from '@/lib/mock-provider';
 import { usePostSSE } from '@/hooks/usePostSSE';
 import { GET_COMMENTS } from '@/graphql/queries';
-import { Comment, VoteType, User, Post, ThreadType } from '@/types';
+import { Comment, VoteType, User, Post, ThreadType, CommentEdge } from '@/types';
 import { Card, CardContent } from '@/components/ui/Card';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle, MessageSquare } from 'lucide-react';
 
 interface CommentTreeProps {
   postId: string;
-  parentId?: string;
   className?: string;
+}
+
+// Filter to only get root-level comments (depth 0 or no parent)
+function getRootComments(comments: Comment[]): Comment[] {
+  return comments.filter(comment => comment.depth === 0 || !comment.parent?.id);
+}
+
+// Helper to find if a parent exists in the tree (recursive search)
+function findCommentInTree(comments: Comment[], targetId: string): boolean {
+  for (const comment of comments) {
+    if (comment.id === targetId) return true;
+    if (comment.replies?.edges) {
+      if (findCommentInTree(comment.replies.edges.map(e => e.node), targetId)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+// Helper to add a new comment to the tree
+function addCommentToTree(comments: Comment[], newComment: Comment): Comment[] {
+  // If it's a root comment, add to the beginning
+  if (!newComment.parent?.id || newComment.depth === 0) {
+    return [newComment, ...comments];
+  }
+
+  // Otherwise, find the parent and add as a reply
+  return comments.map(comment => {
+    // Check if this comment is the parent
+    if (comment.id === newComment.parent?.id) {
+      return {
+        ...comment,
+        replies: {
+          edges: [...(comment.replies?.edges || []), { node: newComment, cursor: newComment.id }],
+          pageInfo: comment.replies?.pageInfo || { hasNextPage: false, hasPreviousPage: false },
+          totalCount: (comment.replies?.totalCount || 0) + 1
+        }
+      };
+    }
+    
+    // Always check nested replies (even if currently empty, parent might be deeper)
+    if (comment.replies?.edges) {
+      const updatedEdges = comment.replies.edges.map(edge => ({
+        ...edge,
+        node: addCommentToTree([edge.node], newComment)[0]
+      }));
+      
+      return {
+        ...comment,
+        replies: {
+          ...comment.replies,
+          edges: updatedEdges
+        }
+      };
+    }
+    
+    return comment;
+  });
+}
+
+// Helper to remove a comment from the tree
+function removeCommentFromTree(comments: Comment[], commentId: string): Comment[] {
+  return comments
+    .filter(comment => comment.id !== commentId)
+    .map(comment => {
+      if (!comment.replies?.edges || comment.replies.edges.length === 0) {
+        return comment;
+      }
+      const filteredEdges = comment.replies.edges
+        .filter(edge => edge.node.id !== commentId)
+        .map(edge => ({
+          ...edge,
+          node: removeCommentFromTree([edge.node], commentId)[0]
+        }))
+        .filter(edge => edge.node);
+      
+      return {
+        ...comment,
+        replies: {
+          ...comment.replies,
+          edges: filteredEdges,
+          totalCount: filteredEdges.length
+        }
+      };
+    });
+}
+
+// Helper to update vote count in tree
+function updateVoteInTree(comments: Comment[], targetId: string, voteCount: number): Comment[] {
+  return comments.map(comment => {
+    if (comment.id === targetId) {
+      return { ...comment, voteCount };
+    }
+    if (comment.replies?.edges && comment.replies.edges.length > 0) {
+      return {
+        ...comment,
+        replies: {
+          ...comment.replies,
+          edges: comment.replies.edges.map(edge => ({
+            ...edge,
+            node: updateVoteInTree([edge.node], targetId, voteCount)[0]
+          }))
+        }
+      };
+    }
+    return comment;
+  });
 }
 
 export const CommentTree: React.FC<CommentTreeProps> = ({
   postId,
-  parentId,
   className
 }) => {
   const { user } = useAuth();
@@ -29,13 +135,13 @@ export const CommentTree: React.FC<CommentTreeProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [useMock, setUseMock] = useState(false);
+  const [replyingToId, setReplyingToId] = useState<string | null>(null);
 
   // Try GraphQL query first
   const { data, loading: graphqlLoading, error: graphqlError, refetch } = useQuery(GET_COMMENTS, {
     variables: {
       postId,
-      parentId: parentId || null,
-      first: 50
+      first: 100 // Fetch more comments to build tree
     },
     errorPolicy: 'all'
   });
@@ -52,177 +158,200 @@ export const CommentTree: React.FC<CommentTreeProps> = ({
   }) => {
     console.log('[CommentTree] Comment added via SSE:', commentData);
     
-    // Only add the comment if it matches the current parentId filter
-    const commentParentId = commentData.parentId || null;
-    if ((!parentId && !commentParentId) || (parentId && commentParentId === parentId)) {
-      // Convert SSE comment format to Comment type
-      // Create a complete User object for the author
-      const authorUser: User = {
-        id: commentData.author.id,
-        username: commentData.author.username,
-        avatarUrl: commentData.author.avatarUrl,
-        email: '', // Not provided by SSE
-        reputation: 0, // Not provided by SSE
-        isVerified: false, // Not provided by SSE
-        createdAt: '',
-        updatedAt: '',
-      };
+    // Create a complete User object for the author
+    const authorUser: User = {
+      id: commentData.author.id,
+      username: commentData.author.username,
+      avatarUrl: commentData.author.avatarUrl,
+      email: '',
+      reputation: 0,
+      isVerified: false,
+      createdAt: '',
+      updatedAt: '',
+    };
 
-      // Create a minimal Post object for the comment
-      const postForComment: Post = {
-        id: commentData.postId,
-        title: '',
+    // Create a minimal Post object for the comment
+    const postForComment: Post = {
+      id: commentData.postId,
+      title: '',
+      content: '',
+      author: authorUser,
+      threadType: ThreadType.DISCUSSION,
+      views: 0,
+      topics: [],
+      comments: { edges: [], pageInfo: { hasNextPage: false, hasPreviousPage: false }, totalCount: 0 },
+      voteCount: 0,
+      bookmarked: false,
+      isPinned: false,
+      isLocked: false,
+      createdAt: '',
+      updatedAt: '',
+    };
+
+    const newComment: Comment = {
+      id: commentData.id,
+      content: commentData.content,
+      author: authorUser,
+      post: postForComment,
+      parent: commentData.parentId ? {
+        id: commentData.parentId,
         content: '',
         author: authorUser,
-        threadType: ThreadType.DISCUSSION,
-        views: 0,
-        topics: [],
-        comments: { edges: [], pageInfo: { hasNextPage: false, hasPreviousPage: false }, totalCount: 0 },
+        depth: 0,
+        post: postForComment,
+        replies: { edges: [], pageInfo: { hasNextPage: false, hasPreviousPage: false }, totalCount: 0 },
         voteCount: 0,
-        bookmarked: false,
-        isPinned: false,
-        isLocked: false,
+        isEdited: false,
         createdAt: '',
         updatedAt: '',
-      };
-
-      const newComment: Comment = {
-        id: commentData.id,
-        content: commentData.content,
-        author: authorUser,
-        post: postForComment,
-        parent: commentParentId ? {
-          id: commentParentId,
-          content: '',
-          author: authorUser,
-          depth: 0,
-          post: postForComment,
-          replies: { edges: [], pageInfo: { hasNextPage: false, hasPreviousPage: false }, totalCount: 0 },
-          voteCount: 0,
-          isEdited: false,
-          createdAt: '',
-          updatedAt: '',
-        } : undefined,
-        depth: commentData.depth ?? (commentParentId ? 1 : 0),
-        voteCount: 0,
-        userVote: undefined,
-        isEdited: false,
-        createdAt: commentData.createdAt,
-        updatedAt: commentData.createdAt,
-        replies: {
-          edges: [],
-          pageInfo: { hasNextPage: false, hasPreviousPage: false },
-          totalCount: 0,
-        },
-      };
+      } : undefined,
+      depth: commentData.depth ?? (commentData.parentId ? 1 : 0),
+      voteCount: 0,
+      userVote: undefined,
+      isEdited: false,
+      createdAt: commentData.createdAt,
+      updatedAt: commentData.createdAt,
+      replies: {
+        edges: [],
+        pageInfo: { hasNextPage: false, hasPreviousPage: false },
+        totalCount: 0,
+      },
+    };
+    
+    setComments(prev => {
+      // Check if comment already exists (deep search)
+      const exists = findCommentInTree(prev, newComment.id);
       
-      setComments(prev => {
-        // Check if comment already exists to avoid duplicates
-        const exists = prev.some(comment => comment.id === newComment.id);
-        if (!exists) {
-          console.log('[CommentTree] Adding new comment to list:', newComment.id);
-          return [newComment, ...prev];
-        }
-        console.log('[CommentTree] Comment already exists, skipping:', newComment.id);
-        return prev;
-      });
-    } else {
-      console.log('[CommentTree] Comment filtered out (wrong parent):', {
-        commentParentId,
-        currentParentId: parentId
-      });
-    }
-  }, [parentId]);
+      if (!exists) {
+        console.log('[CommentTree] Adding new comment to tree:', newComment.id, 'depth:', newComment.depth);
+        return addCommentToTree(prev, newComment);
+      }
+      console.log('[CommentTree] Comment already exists, skipping:', newComment.id);
+      return prev;
+    });
+  }, []);
 
   // Handle comment deletions from SSE
   const handleCommentDeleted = useCallback((commentData: { id: string; postId: string; parentId?: string | null }) => {
     console.log('[CommentTree] Comment deleted via SSE:', commentData);
-    
-    // Only remove if it matches the current parentId filter
-    const commentParentId = commentData.parentId || null;
-    if ((!parentId && !commentParentId) || (parentId && commentParentId === parentId)) {
-      setComments(prev => {
-        const filtered = prev.filter(comment => comment.id !== commentData.id);
-        if (filtered.length !== prev.length) {
-          console.log('[CommentTree] Removed deleted comment:', commentData.id);
-        }
-        return filtered;
-      });
-    } else {
-      console.log('[CommentTree] Comment deletion filtered out (wrong parent):', {
-        commentParentId,
-        currentParentId: parentId
-      });
-    }
-  }, [parentId]);
+    setComments(prev => removeCommentFromTree(prev, commentData.id));
+  }, []);
 
   // Handle comment votes from SSE
   const handleCommentVoteUpdate = useCallback((update: { targetId: string; targetType: string; voteCount: number; userVote?: 'UPVOTE' | 'DOWNVOTE' | null }) => {
     console.log('[CommentTree] Comment vote update received via SSE:', update);
     
-    // Only update if it's a comment vote
     if (update.targetType === 'comment') {
-      setComments(prev => prev.map(comment => {
-        if (comment.id === update.targetId) {
-          // Only update voteCount from SSE (like post voting does)
-          // userVote is managed by the mutation response, not SSE
-          return { ...comment, voteCount: update.voteCount };
-        }
-        return comment;
-      }));
+      setComments(prev => updateVoteInTree(prev, update.targetId, update.voteCount));
     }
   }, []);
 
-  // Connect to SSE for live comment updates (only for top-level comments or matching parent)
+  // Connect to SSE for live comment updates
   usePostSSE({
     postId,
     onCommentAdded: handleCommentAdded,
     onCommentDeleted: handleCommentDeleted,
     onVoteUpdate: handleCommentVoteUpdate,
-    enabled: !useMock && !!postId, // Only enable if not using mock data
+    enabled: !useMock && !!postId,
   });
 
   useEffect(() => {
     if (graphqlError) {
-      // If GraphQL fails, use mock data
       console.log('GraphQL failed, using mock data for comments:', graphqlError.message);
       setUseMock(true);
       const mockComments = mockData.getComments(postId);
-      setComments(mockComments);
+      setComments(getRootComments(mockComments));
       setLoading(false);
     } else if (data?.comments?.edges) {
-      // Use real data
       setUseMock(false);
-      const realComments = data.comments.edges.map((edge: { node: Comment }) => edge.node);
-      setComments(realComments);
+      // The query returns pre-nested comments with replies, just extract root comments
+      const allComments = data.comments.edges.map((edge: CommentEdge) => edge.node);
+      // Filter to only root-level comments since replies come nested
+      setComments(getRootComments(allComments));
       setLoading(false);
     } else if (!graphqlLoading) {
-      // If no data and not loading, use mock data
       setUseMock(true);
       const mockComments = mockData.getComments(postId);
-      setComments(mockComments);
+      setComments(getRootComments(mockComments));
       setLoading(false);
     }
-  }, [data, graphqlError, graphqlLoading, postId, parentId, mockData]);
+  }, [data, graphqlError, graphqlLoading, postId, mockData]);
 
   const handleCommentUpdated = (commentId: string) => {
-    // For now, just refetch comments
-    // In a real app, you might want to update the specific comment
     console.log('Comment updated:', commentId);
   };
 
   const handleLocalCommentDeleted = (commentId: string) => {
-    setComments(prev => prev.filter(comment => comment.id !== commentId));
+    setComments(prev => removeCommentFromTree(prev, commentId));
   };
 
   const handleCommentVote = (commentId: string, voteType: VoteType | null) => {
     // Update the comment's userVote locally when user votes
-    setComments(prev => prev.map(comment => 
-      comment.id === commentId
-        ? { ...comment, userVote: voteType || undefined }
-        : comment
-    ));
+    const updateUserVote = (comments: Comment[]): Comment[] => {
+      return comments.map(comment => {
+        if (comment.id === commentId) {
+          return { ...comment, userVote: voteType || undefined };
+        }
+        if (comment.replies?.edges && comment.replies.edges.length > 0) {
+          return {
+            ...comment,
+            replies: {
+              ...comment.replies,
+              edges: comment.replies.edges.map(edge => ({
+                ...edge,
+                node: updateUserVote([edge.node])[0]
+              }))
+            }
+          };
+        }
+        return comment;
+      });
+    };
+    setComments(prev => updateUserVote(prev));
   };
+
+  const handleReplyStart = (commentId: string) => {
+    setReplyingToId(commentId);
+  };
+
+  const handleReplyCancel = () => {
+    setReplyingToId(null);
+  };
+
+  const handleReplySuccess = async (parentId: string) => {
+    setReplyingToId(null);
+    // Refetch to get the new reply with proper structure
+    if (!useMock && refetch) {
+      try {
+        await refetch();
+      } catch (error) {
+        console.error('Failed to refetch comments:', error);
+      }
+    }
+  };
+
+  const handleTopLevelCommentSuccess = async () => {
+    if (!useMock && refetch) {
+      try {
+        await refetch();
+      } catch (error) {
+        console.error('Failed to refetch comments:', error);
+      }
+    }
+  };
+
+  // Count total comments including nested
+  const totalCommentCount = useMemo(() => {
+    const countNested = (comments: Comment[]): number => {
+      return comments.reduce((acc, comment) => {
+        const repliesCount = comment.replies?.edges 
+          ? countNested(comment.replies.edges.map(e => e.node)) 
+          : 0;
+        return acc + 1 + repliesCount;
+      }, 0);
+    };
+    return countNested(comments);
+  }, [comments]);
 
   if (loading) {
     return (
@@ -261,51 +390,59 @@ export const CommentTree: React.FC<CommentTreeProps> = ({
         </div>
       )}
 
-      {/* Comment Form */}
-      {user && !parentId && (
+      {/* Header with comment count */}
+      <div className="flex items-center space-x-2 mb-6">
+        <MessageSquare className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+          {totalCommentCount} {totalCommentCount === 1 ? 'Comment' : 'Comments'}
+        </h3>
+      </div>
+
+      {/* Top-level Comment Form */}
+      {user && (
         <Card className="mb-6">
           <CardContent className="p-6">
             <CommentForm
               postId={postId}
-              parentId={parentId}
-              onSuccess={async () => {
-                // Refetch comments to show the new comment immediately
-                if (!useMock && refetch) {
-                  try {
-                    await refetch();
-                  } catch (error) {
-                    console.error('Failed to refetch comments:', error);
-                  }
-                }
-              }}
+              onSuccess={handleTopLevelCommentSuccess}
+              placeholder="Join the discussion..."
             />
           </CardContent>
         </Card>
       )}
 
       {/* Comments List */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         {comments.length === 0 ? (
           <Card>
-            <CardContent className="flex flex-col items-center justify-center py-8">
-              <div className="text-4xl mb-2">💬</div>
-              <p className="text-gray-600 dark:text-gray-400 text-center">
-                {parentId ? 'No replies yet' : 'No comments yet'}
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <div className="text-5xl mb-4">💬</div>
+              <p className="text-gray-600 dark:text-gray-400 text-center text-lg">
+                No comments yet
               </p>
-              <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
-                Be the first to {parentId ? 'reply' : 'comment'}!
+              <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">
+                Be the first to share your thoughts!
               </p>
             </CardContent>
           </Card>
         ) : (
           comments.map((comment: Comment) => (
-            <CommentItem
-              key={comment.id}
-              comment={comment}
-              onVote={handleCommentVote}
-              onEdit={handleCommentUpdated}
-              onDelete={handleLocalCommentDeleted}
-            />
+            <Card key={comment.id} padding="none" className="overflow-visible">
+              <CardContent className="px-4 py-2">
+                <CommentItem
+                  comment={comment}
+                  postId={postId}
+                  onVote={handleCommentVote}
+                  onEdit={handleCommentUpdated}
+                  onDelete={handleLocalCommentDeleted}
+                  onReplySuccess={handleReplySuccess}
+                  replyingToId={replyingToId}
+                  onReplyStart={handleReplyStart}
+                  onReplyCancel={handleReplyCancel}
+                  maxDepth={5}
+                />
+              </CardContent>
+            </Card>
           ))
         )}
       </div>

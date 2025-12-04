@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from '@/hooks/useAuth';
 import { ApolloWrapper } from '@/lib/apollo-wrapper';
 import { MockDataProvider } from '@/lib/mock-provider';
+import { SessionExpiredModal } from '@/components/auth/SessionExpiredModal';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -72,6 +73,7 @@ export default function RootLayout({
           <MockDataProvider>
             <AuthProvider>
               {children}
+              <SessionExpiredModal />
             </AuthProvider>
           </MockDataProvider>
         </ApolloWrapper>

@@ -4,6 +4,7 @@ import { ApolloClient, InMemoryCache, createHttpLink, from } from '@apollo/clien
 import { setContext } from '@apollo/client/link/context';
 import { onError } from '@apollo/client/link/error';
 import { API_ENDPOINTS, STORAGE_KEYS } from './constants';
+import { emitSessionExpired } from '@/contexts/AuthSessionContext';
 
 // HTTP Link for all GraphQL operations (queries and mutations)
 // Real-time updates use SSE via usePostSSE hook instead of WebSocket subscriptions
@@ -27,21 +28,30 @@ const authLink = setContext((_, { headers }) => {
 // Error Link
 const errorLink = onError(({ graphQLErrors, networkError, operation, forward }) => {
   if (graphQLErrors) {
-    graphQLErrors.forEach(({ message, locations, path }) => {
+    graphQLErrors.forEach(({ message, locations, path, extensions }) => {
       console.error(
         `[GraphQL error]: Message: ${message}, Location: ${locations}, Path: ${path}`
       );
+      
+      // Check for authentication errors in GraphQL responses
+      const errorCode = extensions?.code as string;
+      if (errorCode === 'UNAUTHENTICATED' || message?.toLowerCase().includes('not authenticated') || message?.toLowerCase().includes('token expired')) {
+        // Clear tokens and show session expired modal
+        localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+        localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+        emitSessionExpired();
+      }
     });
   }
 
   if (networkError) {
     console.error(`[Network error]: ${networkError}`);
     
-    // Handle 401 errors by clearing auth tokens
+    // Handle 401 errors by showing the session expired modal
     if ('statusCode' in networkError && networkError.statusCode === 401) {
       localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
       localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
-      window.location.href = '/auth/login';
+      emitSessionExpired();
     }
   }
 });

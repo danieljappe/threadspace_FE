@@ -396,7 +396,33 @@ export const GET_COMMENT = gql`
   }
 `;
 
-// Comments Query
+// Fragment for nested replies (to avoid repetition)
+const REPLY_FIELDS = `
+  id
+  content
+  depth
+  voteCount
+  userVote
+  isEdited
+  createdAt
+  updatedAt
+  author {
+    id
+    username
+    avatarUrl
+    reputation
+    isVerified
+  }
+  parent {
+    id
+    author {
+      id
+      username
+    }
+  }
+`;
+
+// Comments Query with deep nesting support
 export const GET_COMMENTS = gql`
   query GetComments($postId: ID!, $first: Int, $after: String, $orderBy: CommentOrder) {
     comments(postId: $postId, first: $first, after: $after, orderBy: $orderBy) {
@@ -430,7 +456,7 @@ export const GET_COMMENTS = gql`
               username
             }
           }
-          replies(first: 10) {
+          replies(first: 20) {
             edges {
               node {
                 id
@@ -440,17 +466,131 @@ export const GET_COMMENTS = gql`
                 userVote
                 isEdited
                 createdAt
+                updatedAt
                 author {
                   id
                   username
                   avatarUrl
                   reputation
+                  isVerified
+                }
+                parent {
+                  id
+                  author {
+                    id
+                    username
+                  }
+                }
+                replies(first: 20) {
+                  edges {
+                    node {
+                      id
+                      content
+                      depth
+                      voteCount
+                      userVote
+                      isEdited
+                      createdAt
+                      updatedAt
+                      author {
+                        id
+                        username
+                        avatarUrl
+                        reputation
+                        isVerified
+                      }
+                      parent {
+                        id
+                        author {
+                          id
+                          username
+                        }
+                      }
+                      replies(first: 20) {
+                        edges {
+                          node {
+                            id
+                            content
+                            depth
+                            voteCount
+                            userVote
+                            isEdited
+                            createdAt
+                            updatedAt
+                            author {
+                              id
+                              username
+                              avatarUrl
+                              reputation
+                              isVerified
+                            }
+                            parent {
+                              id
+                              author {
+                                id
+                                username
+                              }
+                            }
+                            replies(first: 20) {
+                              edges {
+                                node {
+                                  id
+                                  content
+                                  depth
+                                  voteCount
+                                  userVote
+                                  isEdited
+                                  createdAt
+                                  updatedAt
+                                  author {
+                                    id
+                                    username
+                                    avatarUrl
+                                    reputation
+                                    isVerified
+                                  }
+                                  parent {
+                                    id
+                                    author {
+                                      id
+                                      username
+                                    }
+                                  }
+                                  replies(first: 0) {
+                                    edges {
+                                      node {
+                                        id
+                                      }
+                                    }
+                                    totalCount
+                                  }
+                                }
+                              }
+                              pageInfo {
+                                hasNextPage
+                              }
+                              totalCount
+                            }
+                          }
+                        }
+                        pageInfo {
+                          hasNextPage
+                        }
+                        totalCount
+                      }
+                    }
+                  }
+                  pageInfo {
+                    hasNextPage
+                  }
+                  totalCount
                 }
               }
             }
             pageInfo {
               hasNextPage
             }
+            totalCount
           }
         }
         cursor
@@ -461,6 +601,7 @@ export const GET_COMMENTS = gql`
         startCursor
         endCursor
       }
+      totalCount
     }
   }
 `;
