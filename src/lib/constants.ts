@@ -2,7 +2,7 @@ export const APP_NAME = 'ThreadSpace';
 export const APP_DESCRIPTION = 'A modern discussion platform for long-form conversations';
 
 export const API_ENDPOINTS = {
-  GRAPHQL: process.env.NEXT_PUBLIC_GRAPHQL_URI || 'http://localhost:8080/graphql',
+  GRAPHQL: process.env.NEXT_PUBLIC_GRAPHQL_URI || 'http://localhost:4000/graphql',
   // Real-time updates use SSE (Server-Sent Events) at /api/posts/:postId/events
   // No WebSocket endpoint needed
 } as const;
