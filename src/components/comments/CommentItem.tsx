@@ -1,14 +1,15 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useMutation } from '@apollo/client/react';
-import { Comment, VoteType } from '@/types';
+import React, { useState, useCallback } from 'react';
+import { useMutation, useLazyQuery } from '@apollo/client/react';
+import { Comment, VoteType, CommentEdge } from '@/types';
 import { VoteButtons } from '@/components/ui/VoteButtons';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { CommentForm } from './CommentForm';
 import { useAuth } from '@/hooks/useAuth';
 import { VOTE, REMOVE_VOTE, UPDATE_COMMENT, DELETE_COMMENT } from '@/graphql/mutations';
+import { GET_COMMENT_REPLIES } from '@/graphql/queries';
 import { formatDate, formatNumber } from '@/lib/utils';
 import { ROUTES } from '@/lib/constants';
 import { 
@@ -19,7 +20,8 @@ import {
   Check,
   X,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Loader2
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -56,19 +58,65 @@ export const CommentItem: React.FC<CommentItemProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [showActions, setShowActions] = useState(false);
   const [showReplies, setShowReplies] = useState(true);
+  
+  // Pagination state for replies
+  const [additionalReplies, setAdditionalReplies] = useState<CommentEdge[]>([]);
+  const [currentEndCursor, setCurrentEndCursor] = useState<string | null>(null);
+  const [loadedAll, setLoadedAll] = useState(false);
 
   const [voteMutation] = useMutation(VOTE);
   const [removeVoteMutation] = useMutation(REMOVE_VOTE);
   const [updateComment, { loading: updating }] = useMutation(UPDATE_COMMENT);
   const [deleteComment, { loading: deleting }] = useMutation(DELETE_COMMENT);
+  
+  // Lazy query for loading more replies
+  const [fetchMoreReplies, { loading: loadingMoreReplies }] = useLazyQuery(GET_COMMENT_REPLIES, {
+    fetchPolicy: 'network-only',
+    onCompleted: (data) => {
+      if (data?.comment?.replies?.edges) {
+        const newReplies = data.comment.replies.edges;
+        setAdditionalReplies(prev => [...prev, ...newReplies]);
+        setCurrentEndCursor(data.comment.replies.pageInfo.endCursor);
+        // Mark as loaded all if no more pages
+        if (!data.comment.replies.pageInfo.hasNextPage) {
+          setLoadedAll(true);
+        }
+      }
+    }
+  });
 
   // Check if current user is the author
   const isAuthor = user?.id === comment.author.id;
   const isReplyingToThis = replyingToId === comment.id;
-  const replies = comment.replies?.edges || [];
-  const hasReplies = replies.length > 0;
-  const replyCount = comment.replies?.totalCount || replies.length || 0;
+  
+  // Combine original replies with additionally loaded replies
+  const originalReplies = comment.replies?.edges || [];
+  const allReplies = [...originalReplies, ...additionalReplies];
+  const hasReplies = allReplies.length > 0;
+  const replyCount = comment.replies?.totalCount || 0;
+  const displayedCount = allReplies.length;
+  const remainingCount = Math.max(0, replyCount - displayedCount);
   const canReply = comment.depth < maxDepth;
+  
+  // Determine if there are more replies to load
+  // Use pageInfo.hasNextPage from initial data, or check if totalCount > displayed
+  const initialHasMore = comment.replies?.pageInfo?.hasNextPage ?? false;
+  const hasMoreBasedOnCount = remainingCount > 0;
+  const canLoadMore = !loadedAll && (initialHasMore || hasMoreBasedOnCount);
+  
+  // Get the cursor for loading more - use currentEndCursor if we've loaded more, otherwise use initial endCursor
+  const cursorForLoadMore = currentEndCursor || comment.replies?.pageInfo?.endCursor || null;
+  
+  // Handler for loading more replies
+  const handleLoadMoreReplies = useCallback(() => {
+    fetchMoreReplies({
+      variables: {
+        commentId: comment.id,
+        first: 3,
+        after: cursorForLoadMore
+      }
+    });
+  }, [comment.id, cursorForLoadMore, fetchMoreReplies]);
 
   const handleVote = async (voteType: VoteType) => {
     try {
@@ -344,7 +392,7 @@ export const CommentItem: React.FC<CommentItemProps> = ({
       {/* Nested Replies */}
       {hasReplies && showReplies && (
         <div className="mt-3 space-y-3">
-          {replies.map((edge) => (
+          {allReplies.map((edge) => (
             <div 
               key={edge.node.id}
               className="border-l-2 border-gray-200 dark:border-gray-700 pl-4 ml-4"
@@ -363,6 +411,34 @@ export const CommentItem: React.FC<CommentItemProps> = ({
               />
             </div>
           ))}
+          
+          {/* Load More Replies Button */}
+          {canLoadMore && (
+            <div className="ml-4 pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+              <button
+                onClick={handleLoadMoreReplies}
+                disabled={loadingMoreReplies}
+                className="flex items-center space-x-2 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors disabled:opacity-50"
+              >
+                {loadingMoreReplies ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Loading...</span>
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="h-4 w-4" />
+                    <span>
+                      {remainingCount > 0 
+                        ? `Load ${Math.min(remainingCount, 3)} more ${remainingCount === 1 ? 'reply' : 'replies'}${remainingCount > 3 ? ` (${remainingCount} remaining)` : ''}`
+                        : 'Load more replies'
+                      }
+                    </span>
+                  </>
+                )}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

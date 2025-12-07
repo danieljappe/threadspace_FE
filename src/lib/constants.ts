@@ -94,7 +94,7 @@ export const NOTIFICATION_TYPES = {
 } as const;
 
 export const ROUTES = {
-  HOME: '/',
+  HOME: '/main',
   LOGIN: '/auth/login',
   REGISTER: '/auth/register',
   CREATE_POST: '/main/create',

@@ -4,7 +4,6 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { ROUTES } from '@/lib/constants';
 import { Home, Hash, TrendingUp, Users, Bookmark, Bell } from 'lucide-react';
 
 interface NavigationItem {
@@ -12,39 +11,43 @@ interface NavigationItem {
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   count?: number;
+  disabled?: boolean;
 }
 
 const navigationItems: NavigationItem[] = [
   {
     name: 'Home',
-    href: ROUTES.HOME,
+    href: '/main',
     icon: Home,
   },
   {
     name: 'Topics',
-    href: '/topics',
+    href: '/main/topics',
     icon: Hash,
+    disabled: true,
   },
   {
     name: 'Trending',
-    href: '/trending',
+    href: '/main/trending',
     icon: TrendingUp,
+    disabled: true,
   },
   {
     name: 'People',
-    href: '/people',
+    href: '/main/people',
     icon: Users,
+    disabled: true,
   },
   {
     name: 'Bookmarks',
-    href: '/bookmarks',
+    href: '/main/bookmarks',
     icon: Bookmark,
   },
   {
     name: 'Notifications',
-    href: ROUTES.NOTIFICATIONS,
+    href: '/main/notifications',
     icon: Bell,
-    count: 3, // This would come from props or context
+    disabled: true,
   },
 ];
 
@@ -59,8 +62,25 @@ export const Navigation: React.FC<NavigationProps> = ({ className }) => {
     <nav className={cn('space-y-1', className)}>
       {navigationItems.map((item) => {
         const isActive = pathname === item.href || 
-          (item.href !== ROUTES.HOME && pathname.startsWith(item.href));
+          (item.href !== '/main' && pathname.startsWith(item.href));
         
+        if (item.disabled) {
+          return (
+            <div
+              key={item.name}
+              className="group flex items-center px-3 py-2 text-sm font-medium rounded-lg cursor-not-allowed opacity-50"
+            >
+              <item.icon
+                className="mr-3 h-5 w-5 flex-shrink-0 text-gray-400"
+              />
+              <span className="flex-1 text-gray-500 dark:text-gray-500">{item.name}</span>
+              <span className="ml-2 text-[10px] font-medium text-gray-400 dark:text-gray-600 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">
+                Soon
+              </span>
+            </div>
+          );
+        }
+
         return (
           <Link
             key={item.name}

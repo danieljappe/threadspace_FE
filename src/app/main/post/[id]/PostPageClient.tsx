@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation } from '@apollo/client/react';
 import { GET_POST } from '@/graphql/queries';
-import { VOTE, REMOVE_VOTE } from '@/graphql/mutations';
+import { VOTE, REMOVE_VOTE, BOOKMARK_POST, UNBOOKMARK_POST } from '@/graphql/mutations';
 import { Post, VoteType } from '@/types';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { CommentTree } from '@/components/comments/CommentTree';
@@ -23,6 +23,8 @@ export function PostPageClient({ postId }: PostPageClientProps) {
   const router = useRouter();
   const [voteCount, setVoteCount] = useState<number | null>(null);
   const [userVote, setUserVote] = useState<VoteType | null | undefined>(undefined);
+  const [isBookmarked, setIsBookmarked] = useState<boolean | null>(null);
+  const [isBookmarking, setIsBookmarking] = useState(false);
 
   const { data, loading, error, refetch } = useQuery<{ post: Post }>(GET_POST, {
     variables: { id: postId },
@@ -31,8 +33,10 @@ export function PostPageClient({ postId }: PostPageClientProps) {
 
   const [voteMutation] = useMutation(VOTE);
   const [removeVoteMutation] = useMutation(REMOVE_VOTE);
+  const [bookmarkMutation] = useMutation(BOOKMARK_POST);
+  const [unbookmarkMutation] = useMutation(UNBOOKMARK_POST);
 
-  // Set initial vote state from query data
+  // Set initial state from query data
   useEffect(() => {
     if (data?.post) {
       if (voteCount === null) {
@@ -41,8 +45,37 @@ export function PostPageClient({ postId }: PostPageClientProps) {
       if (userVote === undefined) {
         setUserVote(data.post.userVote);
       }
+      if (isBookmarked === null) {
+        setIsBookmarked(data.post.bookmarked);
+      }
     }
-  }, [data?.post, voteCount, userVote]);
+  }, [data?.post, voteCount, userVote, isBookmarked]);
+
+  // Handle bookmark toggle
+  const handleBookmark = async () => {
+    if (isBookmarking) return;
+    
+    setIsBookmarking(true);
+    try {
+      const currentlyBookmarked = isBookmarked ?? data?.post?.bookmarked ?? false;
+      
+      if (currentlyBookmarked) {
+        await unbookmarkMutation({
+          variables: { postId }
+        });
+        setIsBookmarked(false);
+      } else {
+        await bookmarkMutation({
+          variables: { postId }
+        });
+        setIsBookmarked(true);
+      }
+    } catch (error) {
+      console.error('Bookmark failed:', error);
+    } finally {
+      setIsBookmarking(false);
+    }
+  };
 
   // Memoize callbacks to prevent unnecessary re-renders and connection drops
   const handleVoteUpdate = useCallback((update: { voteCount: number }) => {
@@ -293,16 +326,16 @@ export function PostPageClient({ postId }: PostPageClientProps) {
                   <span className="text-sm">{formatNumber(post.views)}</span>
                 </div>
                 <button
-                  onClick={() => {
-                    // TODO: Implement bookmark mutation
-                    console.log('Bookmark');
-                  }}
-                  className={`flex items-center space-x-1 hover:text-blue-600 dark:hover:text-blue-400 ${
-                    post.bookmarked ? 'text-blue-600 dark:text-blue-400' : ''
+                  onClick={handleBookmark}
+                  disabled={isBookmarking}
+                  className={`flex items-center space-x-1 hover:text-blue-600 dark:hover:text-blue-400 transition-colors disabled:opacity-50 ${
+                    (isBookmarked ?? post.bookmarked) ? 'text-blue-600 dark:text-blue-400' : ''
                   }`}
                 >
-                  <Bookmark className={`h-4 w-4 ${post.bookmarked ? 'fill-current' : ''}`} />
-                  <span className="text-sm">Bookmark</span>
+                  <Bookmark className={`h-4 w-4 ${(isBookmarked ?? post.bookmarked) ? 'fill-current' : ''}`} />
+                  <span className="text-sm">
+                    {isBookmarking ? 'Saving...' : (isBookmarked ?? post.bookmarked) ? 'Saved' : 'Bookmark'}
+                  </span>
                 </button>
               </div>
             </div>

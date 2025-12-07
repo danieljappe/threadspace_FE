@@ -129,7 +129,7 @@ export const GET_POST = gql`
               avatarUrl
               reputation
             }
-            replies(first: 10) {
+            replies(first: 3) {
               edges {
                 node {
                   id
@@ -144,9 +144,54 @@ export const GET_POST = gql`
                     username
                     avatarUrl
                     reputation
+                    isVerified
+                  }
+                  parent {
+                    id
+                    author {
+                      id
+                      username
+                    }
+                  }
+                  replies(first: 3) {
+                    edges {
+                      node {
+                        id
+                        content
+                        depth
+                        voteCount
+                        userVote
+                        isEdited
+                        createdAt
+                        author {
+                          id
+                          username
+                          avatarUrl
+                          reputation
+                          isVerified
+                        }
+                        parent {
+                          id
+                          author {
+                            id
+                            username
+                          }
+                        }
+                      }
+                    }
+                    pageInfo {
+                      hasNextPage
+                      endCursor
+                    }
+                    totalCount
                   }
                 }
               }
+              pageInfo {
+                hasNextPage
+                endCursor
+              }
+              totalCount
             }
           }
         }
@@ -257,6 +302,58 @@ export const GET_TRENDING_POSTS = gql`
           hasNextPage
         }
       }
+    }
+  }
+`;
+
+// Bookmarked Posts Query
+export const GET_BOOKMARKED_POSTS = gql`
+  query GetBookmarkedPosts($first: Int, $after: String, $orderBy: PostOrder) {
+    bookmarkedPosts(first: $first, after: $after, orderBy: $orderBy) {
+      edges {
+        node {
+          id
+          title
+          content
+          threadType
+          views
+          voteCount
+          userVote
+          bookmarked
+          isPinned
+          isLocked
+          createdAt
+          updatedAt
+          author {
+            id
+            username
+            bio
+            avatarUrl
+            reputation
+            isVerified
+          }
+          topics {
+            id
+            name
+            slug
+            color
+          }
+          comments(first: 0) {
+            totalCount
+            pageInfo {
+              hasNextPage
+            }
+          }
+        }
+        cursor
+      }
+      pageInfo {
+        hasNextPage
+        hasPreviousPage
+        startCursor
+        endCursor
+      }
+      totalCount
     }
   }
 `;
@@ -372,7 +469,7 @@ export const GET_COMMENT = gql`
           username
         }
       }
-      replies(first: 10) {
+      replies(first: 3) {
         edges {
           node {
             id
@@ -387,12 +484,22 @@ export const GET_COMMENT = gql`
               username
               avatarUrl
               reputation
+              isVerified
+            }
+            parent {
+              id
+              author {
+                id
+                username
+              }
             }
           }
         }
         pageInfo {
           hasNextPage
+          endCursor
         }
+        totalCount
       }
     }
   }
@@ -424,7 +531,33 @@ const REPLY_FIELDS = `
   }
 `;
 
-// Comments Query with deep nesting support
+// Reply fragment for consistent reply structure
+const REPLY_NODE_FIELDS = `
+  id
+  content
+  depth
+  voteCount
+  userVote
+  isEdited
+  createdAt
+  updatedAt
+  author {
+    id
+    username
+    avatarUrl
+    reputation
+    isVerified
+  }
+  parent {
+    id
+    author {
+      id
+      username
+    }
+  }
+`;
+
+// Comments Query with deep nesting support (first 3 replies per level)
 export const GET_COMMENTS = gql`
   query GetComments($postId: ID!, $first: Int, $after: String, $orderBy: CommentOrder) {
     comments(postId: $postId, first: $first, after: $after, orderBy: $orderBy) {
@@ -458,7 +591,7 @@ export const GET_COMMENTS = gql`
               username
             }
           }
-          replies(first: 20) {
+          replies(first: 3) {
             edges {
               node {
                 id
@@ -483,7 +616,7 @@ export const GET_COMMENTS = gql`
                     username
                   }
                 }
-                replies(first: 20) {
+                replies(first: 3) {
                   edges {
                     node {
                       id
@@ -508,7 +641,7 @@ export const GET_COMMENTS = gql`
                           username
                         }
                       }
-                      replies(first: 20) {
+                      replies(first: 3) {
                         edges {
                           node {
                             id
@@ -533,7 +666,7 @@ export const GET_COMMENTS = gql`
                                 username
                               }
                             }
-                            replies(first: 20) {
+                            replies(first: 3) {
                               edges {
                                 node {
                                   id
@@ -564,12 +697,17 @@ export const GET_COMMENTS = gql`
                                         id
                                       }
                                     }
+                                    pageInfo {
+                                      hasNextPage
+                                      endCursor
+                                    }
                                     totalCount
                                   }
                                 }
                               }
                               pageInfo {
                                 hasNextPage
+                                endCursor
                               }
                               totalCount
                             }
@@ -577,6 +715,7 @@ export const GET_COMMENTS = gql`
                         }
                         pageInfo {
                           hasNextPage
+                          endCursor
                         }
                         totalCount
                       }
@@ -584,6 +723,7 @@ export const GET_COMMENTS = gql`
                   }
                   pageInfo {
                     hasNextPage
+                    endCursor
                   }
                   totalCount
                 }
@@ -591,6 +731,7 @@ export const GET_COMMENTS = gql`
             }
             pageInfo {
               hasNextPage
+              endCursor
             }
             totalCount
           }
@@ -604,6 +745,124 @@ export const GET_COMMENTS = gql`
         endCursor
       }
       totalCount
+    }
+  }
+`;
+
+// Query to fetch more replies for a specific comment
+export const GET_COMMENT_REPLIES = gql`
+  query GetCommentReplies($commentId: ID!, $first: Int, $after: String) {
+    comment(id: $commentId) {
+      id
+      replies(first: $first, after: $after) {
+        edges {
+          node {
+            id
+            content
+            depth
+            voteCount
+            userVote
+            isEdited
+            createdAt
+            updatedAt
+            author {
+              id
+              username
+              avatarUrl
+              reputation
+              isVerified
+            }
+            parent {
+              id
+              author {
+                id
+                username
+              }
+            }
+            replies(first: 3) {
+              edges {
+                node {
+                  id
+                  content
+                  depth
+                  voteCount
+                  userVote
+                  isEdited
+                  createdAt
+                  updatedAt
+                  author {
+                    id
+                    username
+                    avatarUrl
+                    reputation
+                    isVerified
+                  }
+                  parent {
+                    id
+                    author {
+                      id
+                      username
+                    }
+                  }
+                  replies(first: 3) {
+                    edges {
+                      node {
+                        id
+                        content
+                        depth
+                        voteCount
+                        userVote
+                        isEdited
+                        createdAt
+                        updatedAt
+                        author {
+                          id
+                          username
+                          avatarUrl
+                          reputation
+                          isVerified
+                        }
+                        parent {
+                          id
+                          author {
+                            id
+                            username
+                          }
+                        }
+                        replies(first: 0) {
+                          pageInfo {
+                            hasNextPage
+                            endCursor
+                          }
+                          totalCount
+                        }
+                      }
+                    }
+                    pageInfo {
+                      hasNextPage
+                      endCursor
+                    }
+                    totalCount
+                  }
+                }
+              }
+              pageInfo {
+                hasNextPage
+                endCursor
+              }
+              totalCount
+            }
+          }
+          cursor
+        }
+        pageInfo {
+          hasNextPage
+          hasPreviousPage
+          startCursor
+          endCursor
+        }
+        totalCount
+      }
     }
   }
 `;
