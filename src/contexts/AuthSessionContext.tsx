@@ -49,7 +49,9 @@ export function AuthSessionProvider({ children }: AuthSessionProviderProps) {
     const unsubscribe = subscribeToSessionExpired(() => {
       setIsSessionExpired(true);
     });
-    return unsubscribe;
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   const value: AuthSessionContextType = {
