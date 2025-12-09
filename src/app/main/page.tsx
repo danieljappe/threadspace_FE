@@ -1,11 +1,10 @@
 'use client';
 
-import React, { useState, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import React, { useState } from 'react';
 import { PostList } from '@/components/posts/PostList';
 import { PostOrder } from '@/types';
 import { Card, CardContent } from '@/components/ui/Card';
-import { Flame, Clock, TrendingUp, Trophy } from 'lucide-react';
+import { Clock, Trophy } from 'lucide-react';
 
 type SortOption = {
   value: PostOrder;
@@ -15,24 +14,19 @@ type SortOption = {
 
 const sortOptions: SortOption[] = [
   { value: PostOrder.NEWEST, label: 'New', icon: <Clock className="w-4 h-4" /> },
-  { value: PostOrder.TRENDING, label: 'Trending', icon: <Flame className="w-4 h-4" /> },
   { value: PostOrder.TOP, label: 'Top', icon: <Trophy className="w-4 h-4" /> },
-  { value: PostOrder.OLDEST, label: 'Old', icon: <TrendingUp className="w-4 h-4" /> },
+  { value: PostOrder.OLDEST, label: 'Old', icon: <Clock className="w-4 h-4 rotate-180" /> },
 ];
 
-function MainPageContent() {
-  const searchParams = useSearchParams();
+export default function MainPage() {
   const [orderBy, setOrderBy] = useState<PostOrder>(PostOrder.NEWEST);
-  
-  // Get search from URL params if present
-  const search = searchParams.get('search') || undefined;
 
   return (
     <div className="space-y-6">
       {/* Header with sort options */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          {search ? `Results for "${search}"` : 'Feed'}
+          Feed
         </h1>
         
         {/* Sort tabs */}
@@ -57,30 +51,7 @@ function MainPageContent() {
       </div>
 
       {/* Posts list with infinite scroll */}
-      <PostList 
-        orderBy={orderBy} 
-        search={search}
-      />
+      <PostList orderBy={orderBy} />
     </div>
-  );
-}
-
-export default function MainPage() {
-  return (
-    <Suspense fallback={
-      <div className="space-y-4">
-        {[...Array(3)].map((_, i) => (
-          <Card key={i} className="animate-pulse">
-            <CardContent className="p-6">
-              <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-4"></div>
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full mb-2"></div>
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3"></div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    }>
-      <MainPageContent />
-    </Suspense>
   );
 }

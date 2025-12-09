@@ -1,15 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useQuery } from '@apollo/client/react';
-import { useAuth } from '@/hooks/useAuth';
+import React from 'react';
 import { Navigation } from './Navigation';
-import { GET_TOPICS } from '@/graphql/queries';
-import { useMockData } from '@/lib/mock-provider';
-import { Topic } from '@/types';
 import { cn } from '@/lib/utils';
-import { Hash, X, Search } from 'lucide-react';
-import { Input } from '@/components/ui/Input';
+import { X } from 'lucide-react';
 
 interface SidebarProps {
   className?: string;
@@ -22,47 +16,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isOpen = true, 
   onClose 
 }) => {
-  const { user } = useAuth();
-  const mockData = useMockData();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [topics, setTopics] = useState<Topic[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [useMock, setUseMock] = useState(false);
-
-  // Try GraphQL query first
-  const { data, loading: graphqlLoading, error: graphqlError } = useQuery(GET_TOPICS, {
-    variables: {
-      search: searchQuery || undefined,
-      first: 20
-    },
-    skip: !user // Only fetch if user is logged in
-  });
-
-  useEffect(() => {
-    if (graphqlError) {
-      // If GraphQL fails, use mock data
-      console.log('GraphQL failed, using mock data for topics:', graphqlError.message);
-      setUseMock(true);
-      const mockTopics = mockData.getTopics(searchQuery);
-      setTopics(mockTopics);
-      setLoading(false);
-    } else if (data?.topics?.edges) {
-      // Use real data
-      setUseMock(false);
-      const realTopics = data.topics.edges.map((edge: { node: Topic }) => edge.node);
-      setTopics(realTopics);
-      setLoading(false);
-    } else if (!graphqlLoading && user) {
-      // If no data and not loading, use mock data
-      setUseMock(true);
-      const mockTopics = mockData.getTopics(searchQuery);
-      setTopics(mockTopics);
-      setLoading(false);
-    } else if (!user) {
-      setLoading(false);
-    }
-  }, [data, graphqlError, graphqlLoading, searchQuery, user, mockData]);
-
   return (
     <>
       {/* Mobile Overlay */}
@@ -101,79 +54,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="flex-1 overflow-y-auto p-4">
             <Navigation />
           </div>
-
-          {/* Topics Section */}
-          {user && (
-            <div className="border-t border-gray-200 dark:border-gray-700 p-4">
-              <div className="mb-4">
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
-                  Popular Topics
-                </h3>
-                
-                {/* Search Topics */}
-                <div className="mb-3">
-                  <Input
-                    type="search"
-                    placeholder="Search topics..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    leftIcon={<Search className="h-4 w-4" />}
-                  />
-                </div>
-
-                {/* Topics List */}
-                <div className="space-y-1">
-                  {loading ? (
-                    <div className="space-y-2">
-                      {[...Array(5)].map((_, i) => (
-                        <div
-                          key={i}
-                          className="animate-pulse flex items-center space-x-3"
-                        >
-                          <div className="h-4 w-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
-                          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded flex-1"></div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <>
-                      {useMock && (
-                        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-2 mb-2">
-                          <p className="text-xs text-blue-800 dark:text-blue-200">
-                            📡 Using mock data
-                          </p>
-                        </div>
-                      )}
-                      {topics.map((topic: Topic, index: number) => (
-                        <a
-                          key={topic.id}
-                          href={`/main/topic/${topic.slug}`}
-                          className="group flex items-center justify-between px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                        >
-                          <div className="flex items-center space-x-3">
-                            <div
-                              className="h-3 w-3 rounded-full flex-shrink-0"
-                              style={{ backgroundColor: topic.color || '#6B7280' }}
-                            />
-                            <span className="truncate">#{topic.name}</span>
-                          </div>
-                          <span className="text-xs text-gray-500 dark:text-gray-400">
-                            {Number(topic.subscriberCount) || 0}
-                          </span>
-                        </a>
-                      ))}
-                    </>
-                  )}
-                </div>
-
-                {!loading && topics.length === 0 && searchQuery && (
-                  <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
-                    No topics found for &quot;{searchQuery}&quot;
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </>

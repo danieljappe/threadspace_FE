@@ -4,14 +4,12 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { Home, Hash, TrendingUp, Users, Bookmark, Bell } from 'lucide-react';
+import { Home, Bookmark } from 'lucide-react';
 
 interface NavigationItem {
   name: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
-  count?: number;
-  disabled?: boolean;
 }
 
 const navigationItems: NavigationItem[] = [
@@ -21,33 +19,9 @@ const navigationItems: NavigationItem[] = [
     icon: Home,
   },
   {
-    name: 'Topics',
-    href: '/main/topics',
-    icon: Hash,
-    disabled: true,
-  },
-  {
-    name: 'Trending',
-    href: '/main/trending',
-    icon: TrendingUp,
-    disabled: true,
-  },
-  {
-    name: 'People',
-    href: '/main/people',
-    icon: Users,
-    disabled: true,
-  },
-  {
     name: 'Bookmarks',
     href: '/main/bookmarks',
     icon: Bookmark,
-  },
-  {
-    name: 'Notifications',
-    href: '/main/notifications',
-    icon: Bell,
-    disabled: true,
   },
 ];
 
@@ -63,23 +37,6 @@ export const Navigation: React.FC<NavigationProps> = ({ className }) => {
       {navigationItems.map((item) => {
         const isActive = pathname === item.href || 
           (item.href !== '/main' && pathname.startsWith(item.href));
-        
-        if (item.disabled) {
-          return (
-            <div
-              key={item.name}
-              className="group flex items-center px-3 py-2 text-sm font-medium rounded-lg cursor-not-allowed opacity-50"
-            >
-              <item.icon
-                className="mr-3 h-5 w-5 flex-shrink-0 text-gray-400"
-              />
-              <span className="flex-1 text-gray-500 dark:text-gray-500">{item.name}</span>
-              <span className="ml-2 text-[10px] font-medium text-gray-400 dark:text-gray-600 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">
-                Soon
-              </span>
-            </div>
-          );
-        }
 
         return (
           <Link
@@ -101,11 +58,6 @@ export const Navigation: React.FC<NavigationProps> = ({ className }) => {
               )}
             />
             <span className="flex-1">{item.name}</span>
-            {item.count && item.count > 0 && (
-              <span className="ml-3 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
-                {item.count}
-              </span>
-            )}
           </Link>
         );
       })}

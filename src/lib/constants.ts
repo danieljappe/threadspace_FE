@@ -3,21 +3,11 @@ export const APP_DESCRIPTION = 'A modern discussion platform for long-form conve
 
 export const API_ENDPOINTS = {
   GRAPHQL: process.env.NEXT_PUBLIC_GRAPHQL_URI || 'http://localhost:4000/graphql',
-  // Real-time updates use SSE (Server-Sent Events) at /api/posts/:postId/events
-  // No WebSocket endpoint needed
 } as const;
 
 export const PAGINATION = {
   POSTS_PER_PAGE: 20,
   COMMENTS_PER_PAGE: 20,
-  USERS_PER_PAGE: 20,
-  TOPICS_PER_PAGE: 20,
-} as const;
-
-export const DEBOUNCE_DELAYS = {
-  SEARCH: 300,
-  TYPING: 1000,
-  AUTO_SAVE: 2000,
 } as const;
 
 export const MAX_LENGTHS = {
@@ -25,7 +15,6 @@ export const MAX_LENGTHS = {
   POST_CONTENT: 10000,
   COMMENT_CONTENT: 2000,
   USER_BIO: 500,
-  TOPIC_DESCRIPTION: 1000,
   USERNAME: 30,
 } as const;
 
@@ -39,22 +28,6 @@ export const VALIDATION_RULES = {
 export const STORAGE_KEYS = {
   AUTH_TOKEN: 'threadspace_auth_token',
   REFRESH_TOKEN: 'threadspace_refresh_token',
-  USER_PREFERENCES: 'threadspace_user_preferences',
-  DRAFT_POST: 'threadspace_draft_post',
-  THEME: 'threadspace_theme',
-} as const;
-
-export const THEMES = {
-  LIGHT: 'light',
-  DARK: 'dark',
-  SYSTEM: 'system',
-} as const;
-
-export const THREAD_TYPES = {
-  DISCUSSION: 'DISCUSSION',
-  QUESTION: 'QUESTION',
-  ANNOUNCEMENT: 'ANNOUNCEMENT',
-  POLL: 'POLL',
 } as const;
 
 export const VOTE_TYPES = {
@@ -65,7 +38,6 @@ export const VOTE_TYPES = {
 export const POST_ORDERS = {
   NEWEST: 'NEWEST',
   OLDEST: 'OLDEST',
-  TRENDING: 'TRENDING',
   TOP: 'TOP',
 } as const;
 
@@ -77,33 +49,13 @@ export const COMMENT_ORDERS = {
   TOP: 'TOP',
 } as const;
 
-export const SEARCH_TYPES = {
-  POSTS: 'POSTS',
-  USERS: 'USERS',
-  TOPICS: 'TOPICS',
-  ALL: 'ALL',
-} as const;
-
-export const NOTIFICATION_TYPES = {
-  COMMENT: 'COMMENT',
-  REPLY: 'REPLY',
-  VOTE: 'VOTE',
-  FOLLOW: 'FOLLOW',
-  MENTION: 'MENTION',
-  POST_UPDATE: 'POST_UPDATE',
-} as const;
-
 export const ROUTES = {
   HOME: '/main',
   LOGIN: '/auth/login',
   REGISTER: '/auth/register',
   CREATE_POST: '/main/create',
   POST: (id: string) => `/main/post?id=${id}`,
-  TOPIC: (slug: string) => `/main/topic/${slug}`,
-  USER: (username: string) => `/main/user/${username}`,
-  PROFILE: '/main/profile',
-  SETTINGS: '/main/settings',
-  NOTIFICATIONS: '/main/notifications',
+  BOOKMARKS: '/main/bookmarks',
 } as const;
 
 export const ERROR_MESSAGES = {
@@ -123,13 +75,8 @@ export const ERROR_MESSAGES = {
 
 export const SUCCESS_MESSAGES = {
   POST_CREATED: 'Post created successfully!',
-  POST_UPDATED: 'Post updated successfully!',
   POST_DELETED: 'Post deleted successfully!',
   COMMENT_CREATED: 'Comment posted successfully!',
-  COMMENT_UPDATED: 'Comment updated successfully!',
   COMMENT_DELETED: 'Comment deleted successfully!',
-  PROFILE_UPDATED: 'Profile updated successfully!',
-  PASSWORD_CHANGED: 'Password changed successfully!',
-  ACCOUNT_DELETED: 'Account deleted successfully!',
   LOGGED_OUT: 'Logged out successfully!',
 } as const;

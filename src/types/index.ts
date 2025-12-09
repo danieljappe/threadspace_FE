@@ -16,15 +16,10 @@ export interface Post {
   author: User;
   title: string;
   content: string;
-  threadType: ThreadType;
-  views: number;
-  topics?: Topic[];
   comments: CommentConnection;
   voteCount: number;
   userVote?: VoteType;
   bookmarked: boolean;
-  isPinned: boolean;
-  isLocked: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -44,34 +39,7 @@ export interface Comment {
   updatedAt: string;
 }
 
-export interface Topic {
-  id: string;
-  name: string;
-  slug: string;
-  description?: string;
-  color?: string;
-  subscriberCount: number;
-  posts: PostConnection;
-  isSubscribed: boolean;
-}
-
-export interface Notification {
-  id: string;
-  userId: string;
-  type: string;
-  data: Record<string, unknown>;
-  isRead: boolean;
-  createdAt: string;
-}
-
 // Enums
-export enum ThreadType {
-  DISCUSSION = 'DISCUSSION',
-  QUESTION = 'QUESTION',
-  ANNOUNCEMENT = 'ANNOUNCEMENT',
-  POLL = 'POLL'
-}
-
 export enum VoteType {
   UPVOTE = 'UPVOTE',
   DOWNVOTE = 'DOWNVOTE'
@@ -80,7 +48,6 @@ export enum VoteType {
 export enum PostOrder {
   NEWEST = 'NEWEST',
   OLDEST = 'OLDEST',
-  TRENDING = 'TRENDING',
   TOP = 'TOP'
 }
 
@@ -90,17 +57,11 @@ export enum CommentOrder {
   TOP = 'TOP'
 }
 
-export enum SearchType {
-  POSTS = 'POSTS',
-  USERS = 'USERS',
-  TOPICS = 'TOPICS',
-  ALL = 'ALL'
-}
-
 // Connection Types
 export interface PostConnection {
   edges: PostEdge[];
   pageInfo: PageInfo;
+  totalCount?: number;
 }
 
 export interface PostEdge {
@@ -116,26 +77,6 @@ export interface CommentConnection {
 
 export interface CommentEdge {
   node: Comment;
-  cursor: string;
-}
-
-export interface UserConnection {
-  edges: UserEdge[];
-  pageInfo: PageInfo;
-}
-
-export interface UserEdge {
-  node: User;
-  cursor: string;
-}
-
-export interface TopicConnection {
-  edges: TopicEdge[];
-  pageInfo: PageInfo;
-}
-
-export interface TopicEdge {
-  node: Topic;
   cursor: string;
 }
 
@@ -158,24 +99,9 @@ export interface LoginInput {
   password: string;
 }
 
-export interface UpdateProfileInput {
-  username?: string;
-  bio?: string;
-  avatarUrl?: string;
-}
-
 export interface CreatePostInput {
   title: string;
   content: string;
-  threadType?: ThreadType;
-  topicIds?: string[];
-}
-
-export interface UpdatePostInput {
-  title?: string;
-  content?: string;
-  threadType?: ThreadType;
-  topicIds?: string[];
 }
 
 export interface CreateCommentInput {
@@ -197,29 +123,7 @@ export interface VotePayload {
   userVote?: VoteType;
 }
 
-export interface SearchResults {
-  posts: Post[];
-  users: User[];
-  topics: Topic[];
-}
-
-// Context Types
-export interface AuthContextType {
-  user: User | null;
-  loading: boolean;
-  login: (input: LoginInput) => Promise<AuthPayload>;
-  register: (input: RegisterInput) => Promise<AuthPayload>;
-  logout: () => void;
-  refreshToken: () => Promise<AuthPayload>;
-}
-
 // Component Props
-export interface ThreadCardProps {
-  post: Post;
-  expanded?: boolean;
-  onVote: (voteType: VoteType) => void;
-}
-
 export interface VoteButtonsProps {
   voteCount: number;
   userVote?: VoteType;
@@ -233,24 +137,4 @@ export interface CommentItemProps {
   onReply: (parentId: string) => void;
   onCommentUpdated?: (updatedComment: Comment) => void;
   onCommentDeleted?: (commentId: string) => void;
-}
-
-export interface PostEditorProps {
-  post?: Post;
-  onSubmit: (input: CreatePostInput | UpdatePostInput) => void;
-  loading?: boolean;
-}
-
-// Utility Types
-export interface TypingIndicator {
-  userId: string;
-  username: string;
-  postId: string;
-  timestamp: string;
-}
-
-export interface ApiError {
-  message: string;
-  code: string;
-  field?: string;
 }

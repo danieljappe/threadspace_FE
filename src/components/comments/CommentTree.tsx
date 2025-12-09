@@ -5,10 +5,9 @@ import { useQuery } from '@apollo/client/react';
 import { CommentItem } from './CommentItem';
 import { CommentForm } from './CommentForm';
 import { useAuth } from '@/hooks/useAuth';
-import { useMockData } from '@/lib/mock-provider';
 import { usePostSSE } from '@/hooks/usePostSSE';
 import { GET_COMMENTS } from '@/graphql/queries';
-import { Comment, VoteType, User, Post, ThreadType, CommentEdge } from '@/types';
+import { Comment, VoteType, User, Post, CommentEdge } from '@/types';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Loader2, AlertCircle, MessageSquare } from 'lucide-react';
 
@@ -130,18 +129,16 @@ export const CommentTree: React.FC<CommentTreeProps> = ({
   className
 }) => {
   const { user } = useAuth();
-  const mockData = useMockData();
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [useMock, setUseMock] = useState(false);
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
 
-  // Try GraphQL query first
+  // GraphQL query
   const { data, loading: graphqlLoading, error: graphqlError, refetch } = useQuery(GET_COMMENTS, {
     variables: {
       postId,
-      first: 100 // Fetch more comments to build tree
+      first: 100
     },
     errorPolicy: 'all'
   });
@@ -176,14 +173,9 @@ export const CommentTree: React.FC<CommentTreeProps> = ({
       title: '',
       content: '',
       author: authorUser,
-      threadType: ThreadType.DISCUSSION,
-      views: 0,
-      topics: [],
       comments: { edges: [], pageInfo: { hasNextPage: false, hasPreviousPage: false }, totalCount: 0 },
       voteCount: 0,
       bookmarked: false,
-      isPinned: false,
-      isLocked: false,
       createdAt: '',
       updatedAt: '',
     };
@@ -219,7 +211,6 @@ export const CommentTree: React.FC<CommentTreeProps> = ({
     };
     
     setComments(prev => {
-      // Check if comment already exists (deep search)
       const exists = findCommentInTree(prev, newComment.id);
       
       if (!exists) {
@@ -252,41 +243,29 @@ export const CommentTree: React.FC<CommentTreeProps> = ({
     onCommentAdded: handleCommentAdded,
     onCommentDeleted: handleCommentDeleted,
     onVoteUpdate: handleCommentVoteUpdate,
-    enabled: !useMock && !!postId,
+    enabled: !!postId,
   });
 
   useEffect(() => {
     if (graphqlError) {
-      console.log('GraphQL failed, using mock data for comments:', graphqlError.message);
-      setUseMock(true);
-      const mockComments = mockData.getComments(postId);
-      setComments(getRootComments(mockComments));
+      console.error('GraphQL error loading comments:', graphqlError.message);
+      setError('Failed to load comments');
       setLoading(false);
     } else if (data?.comments?.edges) {
-      setUseMock(false);
-      // The query returns pre-nested comments with replies, just extract root comments
       const allComments = data.comments.edges.map((edge: CommentEdge) => edge.node);
-      // Filter to only root-level comments since replies come nested
       setComments(getRootComments(allComments));
       setLoading(false);
     } else if (!graphqlLoading) {
-      setUseMock(true);
-      const mockComments = mockData.getComments(postId);
-      setComments(getRootComments(mockComments));
+      setComments([]);
       setLoading(false);
     }
-  }, [data, graphqlError, graphqlLoading, postId, mockData]);
-
-  const handleCommentUpdated = (commentId: string) => {
-    console.log('Comment updated:', commentId);
-  };
+  }, [data, graphqlError, graphqlLoading]);
 
   const handleLocalCommentDeleted = (commentId: string) => {
     setComments(prev => removeCommentFromTree(prev, commentId));
   };
 
   const handleCommentVote = (commentId: string, voteType: VoteType | null) => {
-    // Update the comment's userVote locally when user votes
     const updateUserVote = (comments: Comment[]): Comment[] => {
       return comments.map(comment => {
         if (comment.id === commentId) {
@@ -320,8 +299,7 @@ export const CommentTree: React.FC<CommentTreeProps> = ({
 
   const handleReplySuccess = async (parentId: string) => {
     setReplyingToId(null);
-    // Refetch to get the new reply with proper structure
-    if (!useMock && refetch) {
+    if (refetch) {
       try {
         await refetch();
       } catch (error) {
@@ -331,7 +309,7 @@ export const CommentTree: React.FC<CommentTreeProps> = ({
   };
 
   const handleTopLevelCommentSuccess = async () => {
-    if (!useMock && refetch) {
+    if (refetch) {
       try {
         await refetch();
       } catch (error) {
@@ -381,15 +359,6 @@ export const CommentTree: React.FC<CommentTreeProps> = ({
 
   return (
     <div className={className}>
-      {/* Mock Data Notice */}
-      {useMock && (
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4">
-          <p className="text-xs text-blue-800 dark:text-blue-200">
-            📡 Using mock data for comments
-          </p>
-        </div>
-      )}
-
       {/* Header with comment count */}
       <div className="flex items-center space-x-2 mb-6">
         <MessageSquare className="h-5 w-5 text-gray-600 dark:text-gray-400" />
@@ -433,7 +402,6 @@ export const CommentTree: React.FC<CommentTreeProps> = ({
                   comment={comment}
                   postId={postId}
                   onVote={handleCommentVote}
-                  onEdit={handleCommentUpdated}
                   onDelete={handleLocalCommentDeleted}
                   onReplySuccess={handleReplySuccess}
                   replyingToId={replyingToId}

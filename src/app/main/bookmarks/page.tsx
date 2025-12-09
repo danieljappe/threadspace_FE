@@ -37,7 +37,7 @@ export default function BookmarksPage() {
     },
     notifyOnNetworkStatusChange: true,
     errorPolicy: 'all',
-    skip: !user // Skip query if not logged in
+    skip: !user
   });
 
   const isFetchingMore = networkStatus === NetworkStatus.fetchMore;
@@ -86,7 +86,6 @@ export default function BookmarksPage() {
   // Handle unbookmark - refetch to update the list
   const handleBookmarkChange = useCallback((postId: string, bookmarked: boolean) => {
     if (!bookmarked) {
-      // Post was unbookmarked, refetch the list
       refetch();
     }
   }, [refetch]);
@@ -292,4 +291,3 @@ export default function BookmarksPage() {
     </div>
   );
 }
-

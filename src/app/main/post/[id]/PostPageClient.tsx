@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { CommentTree } from '@/components/comments/CommentTree';
 import { VoteButtons } from '@/components/ui/VoteButtons';
 import { Avatar } from '@/components/ui/Avatar';
-import { Loader2, AlertCircle, ArrowLeft, Bookmark, Eye, Calendar } from 'lucide-react';
+import { Loader2, AlertCircle, ArrowLeft, Bookmark, Calendar } from 'lucide-react';
 import { ROUTES, ERROR_MESSAGES } from '@/lib/constants';
 import { usePostSSE } from '@/hooks/usePostSSE';
 import Link from 'next/link';
@@ -81,14 +81,10 @@ export function PostPageClient({ postId }: PostPageClientProps) {
   const handleVoteUpdate = useCallback((update: { voteCount: number }) => {
     console.log('[PostPageClient] Vote update received via SSE:', update);
     setVoteCount(update.voteCount);
-    // Note: SSE updates don't include the current user's vote, so we don't update userVote from SSE
-    // The userVote will be updated when the user themselves votes
   }, []);
 
   const handleCommentAdded = useCallback((comment: { id: string; content: string; author: { id: string; username: string; avatarUrl?: string }; postId: string; parentId?: string | null; depth?: number; createdAt: string }) => {
     console.log('[PostPageClient] Comment added via SSE:', comment);
-    // Refetch the post to update comment count
-    // The CommentTree component will handle adding the comment to the list
     refetch().catch(err => {
       console.error('[PostPageClient] Failed to refetch post after comment:', err);
     });
@@ -96,7 +92,6 @@ export function PostPageClient({ postId }: PostPageClientProps) {
 
   const handleCommentDeleted = useCallback((comment: { id: string; postId: string; parentId?: string | null }) => {
     console.log('[PostPageClient] Comment deleted via SSE:', comment);
-    // Refetch the post to update comment count
     refetch().catch(err => {
       console.error('[PostPageClient] Failed to refetch post after comment deletion:', err);
     });
@@ -107,19 +102,17 @@ export function PostPageClient({ postId }: PostPageClientProps) {
   }, []);
 
   // Connect to SSE for live updates (votes, comments)
-  // Enable SSE as soon as we have a postId, don't wait for data to load
   usePostSSE({
     postId,
     onVoteUpdate: handleVoteUpdate,
     onCommentAdded: handleCommentAdded,
     onCommentDeleted: handleCommentDeleted,
     onError: handleSSEError,
-    enabled: !!postId, // Enable as long as we have a postId
+    enabled: !!postId,
   });
 
   useEffect(() => {
     if (error && error.message.includes('not found')) {
-      // Redirect to not found page after a short delay
       setTimeout(() => {
         router.push('/not-found');
       }, 2000);
@@ -190,12 +183,6 @@ export function PostPageClient({ postId }: PostPageClientProps) {
     });
   };
 
-  const formatNumber = (num: number) => {
-    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
-    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
-    return num.toString();
-  };
-
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
       <div className="max-w-4xl mx-auto">
@@ -220,12 +207,9 @@ export function PostPageClient({ postId }: PostPageClientProps) {
                 />
                 <div>
                   <div className="flex items-center space-x-2">
-                    <Link
-                      href={ROUTES.USER(post.author.username)}
-                      className="font-semibold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400"
-                    >
+                    <span className="font-semibold text-gray-900 dark:text-white">
                       {post.author.username}
-                    </Link>
+                    </span>
                     {post.author.isVerified && (
                       <span className="text-blue-600 dark:text-blue-400" title="Verified">
                         ✓
@@ -241,11 +225,6 @@ export function PostPageClient({ postId }: PostPageClientProps) {
                   </div>
                 </div>
               </div>
-              <div className="flex items-center space-x-2">
-                <span className="px-2 py-1 text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded">
-                  {post.threadType}
-                </span>
-              </div>
             </div>
           </CardHeader>
 
@@ -253,25 +232,6 @@ export function PostPageClient({ postId }: PostPageClientProps) {
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
               {post.title}
             </h1>
-
-            {/* Topics */}
-            {post.topics && post.topics.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-4">
-                {post.topics.map((topic) => (
-                  <Link
-                    key={topic.id}
-                    href={ROUTES.TOPIC(topic.slug)}
-                    className="px-3 py-1 text-sm font-medium rounded-full"
-                    style={{
-                      backgroundColor: topic.color ? `${topic.color}20` : '#e5e7eb',
-                      color: topic.color || '#374151',
-                    }}
-                  >
-                    {topic.name}
-                  </Link>
-                ))}
-              </div>
-            )}
 
             {/* Content */}
             <div className="prose prose-lg max-w-none dark:prose-invert mb-6">
@@ -296,7 +256,6 @@ export function PostPageClient({ postId }: PostPageClientProps) {
                         },
                       });
                       setUserVote(undefined);
-                      // SSE will update the vote count automatically
                     } else {
                       // Otherwise, cast the vote
                       const result = await voteMutation({
@@ -320,24 +279,18 @@ export function PostPageClient({ postId }: PostPageClientProps) {
                 orientation="horizontal"
               />
 
-              <div className="flex items-center space-x-6 text-gray-600 dark:text-gray-400">
-                <div className="flex items-center space-x-1">
-                  <Eye className="h-4 w-4" />
-                  <span className="text-sm">{formatNumber(post.views)}</span>
-                </div>
-                <button
-                  onClick={handleBookmark}
-                  disabled={isBookmarking}
-                  className={`flex items-center space-x-1 hover:text-blue-600 dark:hover:text-blue-400 transition-colors disabled:opacity-50 ${
-                    (isBookmarked ?? post.bookmarked) ? 'text-blue-600 dark:text-blue-400' : ''
-                  }`}
-                >
-                  <Bookmark className={`h-4 w-4 ${(isBookmarked ?? post.bookmarked) ? 'fill-current' : ''}`} />
-                  <span className="text-sm">
-                    {isBookmarking ? 'Saving...' : (isBookmarked ?? post.bookmarked) ? 'Saved' : 'Bookmark'}
-                  </span>
-                </button>
-              </div>
+              <button
+                onClick={handleBookmark}
+                disabled={isBookmarking}
+                className={`flex items-center space-x-1 hover:text-blue-600 dark:hover:text-blue-400 transition-colors disabled:opacity-50 ${
+                  (isBookmarked ?? post.bookmarked) ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'
+                }`}
+              >
+                <Bookmark className={`h-4 w-4 ${(isBookmarked ?? post.bookmarked) ? 'fill-current' : ''}`} />
+                <span className="text-sm">
+                  {isBookmarking ? 'Saving...' : (isBookmarked ?? post.bookmarked) ? 'Saved' : 'Bookmark'}
+                </span>
+              </button>
             </div>
           </CardContent>
         </Card>
@@ -357,4 +310,3 @@ export function PostPageClient({ postId }: PostPageClientProps) {
     </div>
   );
 }
-

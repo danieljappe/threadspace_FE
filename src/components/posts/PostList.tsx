@@ -12,26 +12,17 @@ import { Loader2, AlertCircle } from 'lucide-react';
 const POSTS_PER_PAGE = 10;
 
 interface PostListProps {
-  topicId?: string;
-  authorId?: string;
-  search?: string;
   orderBy?: PostOrder;
   className?: string;
 }
 
 export const PostList: React.FC<PostListProps> = ({
-  topicId,
-  authorId,
-  search,
   orderBy = PostOrder.NEWEST,
   className
 }) => {
   // GraphQL query with cursor-based pagination
   const { data, loading, error, fetchMore, networkStatus } = useQuery(GET_POSTS, {
     variables: {
-      topicId,
-      authorId,
-      search,
       orderBy,
       first: POSTS_PER_PAGE
     },
@@ -140,14 +131,7 @@ export const PostList: React.FC<PostListProps> = ({
             No posts found
           </h3>
           <p className="text-gray-600 dark:text-gray-400 text-center">
-            {search 
-              ? `No posts match "${search}"`
-              : topicId
-              ? 'No posts in this topic yet'
-              : authorId
-              ? 'This user hasn\'t posted anything yet'
-              : 'No posts available'
-            }
+            No posts available yet. Be the first to create one!
           </p>
         </CardContent>
       </Card>

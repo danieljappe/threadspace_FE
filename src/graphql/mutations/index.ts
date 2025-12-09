@@ -64,54 +64,6 @@ export const REFRESH_TOKEN = gql`
   }
 `;
 
-// User Mutations
-export const UPDATE_PROFILE = gql`
-  mutation UpdateProfile($input: UpdateProfileInput!) {
-    updateProfile(input: $input) {
-      id
-      username
-      bio
-      avatarUrl
-      reputation
-      isVerified
-      createdAt
-      updatedAt
-    }
-  }
-`;
-
-export const FOLLOW_USER = gql`
-  mutation FollowUser($userId: ID!) {
-    followUser(userId: $userId) {
-      id
-      username
-      bio
-      avatarUrl
-      reputation
-      isVerified
-      followers(first: 1) {
-        edges {
-          node {
-            id
-          }
-        }
-      }
-    }
-  }
-`;
-
-export const UNFOLLOW_USER = gql`
-  mutation UnfollowUser($userId: ID!) {
-    unfollowUser(userId: $userId) {
-      id
-      username
-      bio
-      avatarUrl
-      reputation
-    }
-  }
-`;
-
 // Post Mutations
 export const CREATE_POST = gql`
   mutation CreatePost($input: CreatePostInput!) {
@@ -119,66 +71,22 @@ export const CREATE_POST = gql`
       id
       title
       content
-      threadType
-      views
       voteCount
       userVote
       bookmarked
-      isPinned
-      isLocked
       createdAt
       updatedAt
       author {
         id
         username
-        bio
         avatarUrl
         reputation
         isVerified
-      }
-      topics {
-        id
-        name
-        slug
-        color
       }
       comments(first: 0) {
         pageInfo {
           hasNextPage
         }
-      }
-    }
-  }
-`;
-
-export const UPDATE_POST = gql`
-  mutation UpdatePost($id: ID!, $input: UpdatePostInput!) {
-    updatePost(id: $id, input: $input) {
-      id
-      title
-      content
-      threadType
-      views
-      voteCount
-      userVote
-      bookmarked
-      isPinned
-      isLocked
-      createdAt
-      updatedAt
-      author {
-        id
-        username
-        bio
-        avatarUrl
-        reputation
-        isVerified
-      }
-      topics {
-        id
-        name
-        slug
-        color
       }
     }
   }
@@ -205,7 +113,6 @@ export const CREATE_COMMENT = gql`
       author {
         id
         username
-        bio
         avatarUrl
         reputation
         isVerified
@@ -226,29 +133,6 @@ export const CREATE_COMMENT = gql`
         pageInfo {
           hasNextPage
         }
-      }
-    }
-  }
-`;
-
-export const UPDATE_COMMENT = gql`
-  mutation UpdateComment($id: ID!, $content: String!) {
-    updateComment(id: $id, content: $content) {
-      id
-      content
-      depth
-      voteCount
-      userVote
-      isEdited
-      createdAt
-      updatedAt
-      author {
-        id
-        username
-        bio
-        avatarUrl
-        reputation
-        isVerified
       }
     }
   }
@@ -291,26 +175,5 @@ export const BOOKMARK_POST = gql`
 export const UNBOOKMARK_POST = gql`
   mutation UnbookmarkPost($postId: ID!) {
     unbookmarkPost(postId: $postId)
-  }
-`;
-
-// Topic Mutations
-export const SUBSCRIBE_TOPIC = gql`
-  mutation SubscribeTopic($topicId: ID!) {
-    subscribeTopic(topicId: $topicId) {
-      id
-      name
-      slug
-      description
-      color
-      subscriberCount
-      isSubscribed
-    }
-  }
-`;
-
-export const UNSUBSCRIBE_TOPIC = gql`
-  mutation UnsubscribeTopic($topicId: ID!) {
-    unsubscribeTopic(topicId: $topicId)
   }
 `;

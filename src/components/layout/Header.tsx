@@ -6,23 +6,14 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
 import { ROUTES } from '@/lib/constants';
-import { Search, Menu, Bell, Plus, User, Settings, LogOut } from 'lucide-react';
+import { Menu, Plus, User, LogOut } from 'lucide-react';
 
 export const Header: React.FC = () => {
-  const { user, loading, logout } = useAuth();
+  const { user, logout } = useAuth();
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState('');
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      router.push(`/?search=${encodeURIComponent(searchQuery.trim())}`);
-    }
-  };
 
   const handleLogout = async () => {
     try {
@@ -49,35 +40,10 @@ export const Header: React.FC = () => {
             </Link>
           </div>
 
-          {/* Search Bar - Desktop */}
-          <div className="hidden md:flex flex-1 max-w-lg mx-8">
-            <form onSubmit={handleSearch} className="w-full">
-              <div className="relative">
-                <Input
-                  type="search"
-                  placeholder="Search posts, users, topics..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  leftIcon={<Search className="h-4 w-4" />}
-                  className="w-full"
-                />
-              </div>
-            </form>
-          </div>
-
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-4">
             {user ? (
               <>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  leftIcon={<Bell className="h-4 w-4" />}
-                  className="relative"
-                >
-                  <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full"></span>
-                </Button>
-                
                 <Button
                   variant="primary"
                   size="sm"
@@ -101,22 +67,14 @@ export const Header: React.FC = () => {
 
                   {showUserMenu && (
                     <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1">
-                      <Link
-                        href={ROUTES.USER(user.username)}
-                        className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                        onClick={() => setShowUserMenu(false)}
-                      >
-                        <User className="h-4 w-4 mr-3" />
-                        Profile
-                      </Link>
-                      <Link
-                        href={ROUTES.SETTINGS}
-                        className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                        onClick={() => setShowUserMenu(false)}
-                      >
-                        <Settings className="h-4 w-4 mr-3" />
-                        Settings
-                      </Link>
+                      <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          {user.username}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {user.email}
+                        </p>
+                      </div>
                       <button
                         onClick={() => {
                           setShowUserMenu(false);
@@ -158,20 +116,6 @@ export const Header: React.FC = () => {
           </div>
         </div>
 
-        {/* Mobile Search */}
-        <div className="md:hidden pb-4">
-          <form onSubmit={handleSearch}>
-            <Input
-              type="search"
-              placeholder="Search..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              leftIcon={<Search className="h-4 w-4" />}
-              className="w-full"
-            />
-          </form>
-        </div>
-
         {/* Mobile Menu */}
         {showMobileMenu && (
           <div className="md:hidden border-t border-gray-200 dark:border-gray-700 py-4">
@@ -184,7 +128,7 @@ export const Header: React.FC = () => {
                       {user.username}
                     </p>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {user.reputation} reputation
+                      {user.email}
                     </p>
                   </div>
                 </div>
@@ -197,22 +141,6 @@ export const Header: React.FC = () => {
                   >
                     <Plus className="h-4 w-4 mr-3" />
                     Create Post
-                  </Link>
-                  <Link
-                    href={ROUTES.USER(user.username)}
-                    className="flex items-center px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-                    onClick={() => setShowMobileMenu(false)}
-                  >
-                    <User className="h-4 w-4 mr-3" />
-                    Profile
-                  </Link>
-                  <Link
-                    href={ROUTES.SETTINGS}
-                    className="flex items-center px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-                    onClick={() => setShowMobileMenu(false)}
-                  >
-                    <Settings className="h-4 w-4 mr-3" />
-                    Settings
                   </Link>
                   <button
                     onClick={() => {

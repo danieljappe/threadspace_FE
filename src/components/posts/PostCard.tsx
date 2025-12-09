@@ -14,12 +14,8 @@ import { formatDate, formatNumber, truncateText } from '@/lib/utils';
 import { ROUTES } from '@/lib/constants';
 import { 
   MessageCircle, 
-  Eye, 
   Bookmark, 
-  BookmarkCheck, 
-  MoreHorizontal,
-  Pin,
-  Lock
+  BookmarkCheck
 } from 'lucide-react';
 
 interface PostCardProps {
@@ -49,8 +45,6 @@ export const PostCard: React.FC<PostCardProps> = ({
   // Handle real-time vote updates via SSE
   const handleVoteUpdate = useCallback((update: { voteCount: number; userVote?: 'UPVOTE' | 'DOWNVOTE' | null }) => {
     setVoteCount(update.voteCount);
-    // Only update userVote if it's provided (SSE updates for other users' votes won't include userVote)
-    // Convert string literals to VoteType enum and null to undefined
     if (update.userVote !== undefined && update.userVote !== null) {
       setUserVote(update.userVote as VoteType);
     } else if (update.userVote === null) {
@@ -111,17 +105,12 @@ export const PostCard: React.FC<PostCardProps> = ({
       <CardHeader>
         <div className="flex items-start justify-between">
           <div className="flex items-center space-x-3">
-            <Link href={ROUTES.USER(post.author.username)}>
-              <Avatar user={post.author} size="md" className="cursor-pointer" />
-            </Link>
+            <Avatar user={post.author} size="md" className="cursor-pointer" />
             <div>
               <div className="flex items-center space-x-2">
-                <Link 
-                  href={ROUTES.USER(post.author.username)}
-                  className="font-semibold text-gray-900 dark:text-white hover:underline"
-                >
+                <span className="font-semibold text-gray-900 dark:text-white">
                   {post.author.username}
-                </Link>
+                </span>
                 {post.author.isVerified && (
                   <span className="text-blue-500" title="Verified user">
                     ✓
@@ -131,62 +120,28 @@ export const PostCard: React.FC<PostCardProps> = ({
                   {formatDate(post.createdAt)}
                 </span>
               </div>
-              <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
-                <span>{formatNumber(post.author.reputation)} reputation</span>
-                {post.isPinned && (
-                  <span className="flex items-center text-blue-600 dark:text-blue-400">
-                    <Pin className="h-3 w-3 mr-1" />
-                    Pinned
-                  </span>
-                )}
-                {post.isLocked && (
-                  <span className="flex items-center text-red-600 dark:text-red-400">
-                    <Lock className="h-3 w-3 mr-1" />
-                    Locked
-                  </span>
-                )}
+              <div className="text-sm text-gray-500 dark:text-gray-400">
+                {formatNumber(post.author.reputation)} reputation
               </div>
             </div>
           </div>
           
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleBookmark}
-              loading={isBookmarking}
-              leftIcon={
-                post.bookmarked ? (
-                  <BookmarkCheck className="h-4 w-4" />
-                ) : (
-                  <Bookmark className="h-4 w-4" />
-                )
-              }
-            >
-              {post.bookmarked ? 'Saved' : 'Save'}
-            </Button>
-            
-            <Button variant="ghost" size="sm">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleBookmark}
+            loading={isBookmarking}
+            leftIcon={
+              post.bookmarked ? (
+                <BookmarkCheck className="h-4 w-4" />
+              ) : (
+                <Bookmark className="h-4 w-4" />
+              )
+            }
+          >
+            {post.bookmarked ? 'Saved' : 'Save'}
+          </Button>
         </div>
-
-        {/* Topics */}
-        {post.topics && post.topics.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-2">
-            {post.topics.map((topic) => (
-              <Link
-                key={topic.id}
-                href={ROUTES.TOPIC(topic.slug)}
-                className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white hover:opacity-80 transition-opacity"
-                style={{ backgroundColor: topic.color || '#6B7280' }}
-              >
-                #{topic.name}
-              </Link>
-            ))}
-          </div>
-        )}
       </CardHeader>
 
       <CardContent>
@@ -220,26 +175,17 @@ export const PostCard: React.FC<PostCardProps> = ({
             orientation="horizontal"
           />
           
-          <div className="flex items-center space-x-4">
-            <Link
-              href={ROUTES.POST(post.id)}
-              className="flex items-center space-x-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
-            >
-              <MessageCircle className="h-4 w-4" />
-              <span className="text-sm">
-                {post.comments?.totalCount !== undefined 
-                  ? `${formatNumber(post.comments.totalCount)} ${post.comments.totalCount === 1 ? 'comment' : 'comments'}`
-                  : post.comments?.pageInfo?.hasNextPage 
-                    ? 'View comments' 
-                    : 'No comments'}
-              </span>
-            </Link>
-            
-            <div className="flex items-center space-x-1 text-gray-500 dark:text-gray-400">
-              <Eye className="h-4 w-4" />
-              <span className="text-sm">{formatNumber(post.views)}</span>
-            </div>
-          </div>
+          <Link
+            href={ROUTES.POST(post.id)}
+            className="flex items-center space-x-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+          >
+            <MessageCircle className="h-4 w-4" />
+            <span className="text-sm">
+              {post.comments?.totalCount !== undefined 
+                ? `${formatNumber(post.comments.totalCount)} ${post.comments.totalCount === 1 ? 'comment' : 'comments'}`
+                : 'View comments'}
+            </span>
+          </Link>
         </div>
       </CardFooter>
     </Card>

@@ -62,7 +62,7 @@ const cache = new InMemoryCache({
     Query: {
       fields: {
         posts: {
-          keyArgs: ['topicId', 'authorId', 'search', 'orderBy'],
+          keyArgs: ['orderBy'],
           merge(existing, incoming, { args }) {
             if (!existing) return incoming;
             
@@ -79,40 +79,24 @@ const cache = new InMemoryCache({
             }
           },
         },
+        bookmarkedPosts: {
+          keyArgs: ['orderBy'],
+          merge(existing, incoming, { args }) {
+            if (!existing) return incoming;
+            
+            const { after } = args || {};
+            if (after) {
+              return {
+                ...incoming,
+                edges: [...existing.edges, ...incoming.edges],
+              };
+            } else {
+              return incoming;
+            }
+          },
+        },
         comments: {
-          keyArgs: ['postId', 'parentId', 'orderBy'],
-          merge(existing, incoming, { args }) {
-            if (!existing) return incoming;
-            
-            const { after } = args || {};
-            if (after) {
-              return {
-                ...incoming,
-                edges: [...existing.edges, ...incoming.edges],
-              };
-            } else {
-              return incoming;
-            }
-          },
-        },
-        users: {
-          keyArgs: ['search'],
-          merge(existing, incoming, { args }) {
-            if (!existing) return incoming;
-            
-            const { after } = args || {};
-            if (after) {
-              return {
-                ...incoming,
-                edges: [...existing.edges, ...incoming.edges],
-              };
-            } else {
-              return incoming;
-            }
-          },
-        },
-        topics: {
-          keyArgs: ['search'],
+          keyArgs: ['postId', 'orderBy'],
           merge(existing, incoming, { args }) {
             if (!existing) return incoming;
             
@@ -132,76 +116,6 @@ const cache = new InMemoryCache({
     Post: {
       fields: {
         comments: {
-          keyArgs: ['orderBy'],
-          merge(existing, incoming, { args }) {
-            if (!existing) return incoming;
-            
-            const { after } = args || {};
-            if (after) {
-              return {
-                ...incoming,
-                edges: [...existing.edges, ...incoming.edges],
-              };
-            } else {
-              return incoming;
-            }
-          },
-        },
-      },
-    },
-    User: {
-      fields: {
-        posts: {
-          keyArgs: ['orderBy'],
-          merge(existing, incoming, { args }) {
-            if (!existing) return incoming;
-            
-            const { after } = args || {};
-            if (after) {
-              return {
-                ...incoming,
-                edges: [...existing.edges, ...incoming.edges],
-              };
-            } else {
-              return incoming;
-            }
-          },
-        },
-        followers: {
-          merge(existing, incoming, { args }) {
-            if (!existing) return incoming;
-            
-            const { after } = args || {};
-            if (after) {
-              return {
-                ...incoming,
-                edges: [...existing.edges, ...incoming.edges],
-              };
-            } else {
-              return incoming;
-            }
-          },
-        },
-        following: {
-          merge(existing, incoming, { args }) {
-            if (!existing) return incoming;
-            
-            const { after } = args || {};
-            if (after) {
-              return {
-                ...incoming,
-                edges: [...existing.edges, ...incoming.edges],
-              };
-            } else {
-              return incoming;
-            }
-          },
-        },
-      },
-    },
-    Topic: {
-      fields: {
-        posts: {
           keyArgs: ['orderBy'],
           merge(existing, incoming, { args }) {
             if (!existing) return incoming;
