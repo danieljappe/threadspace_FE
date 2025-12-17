@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { CommentTree } from '@/components/comments/CommentTree';
 import { VoteButtons } from '@/components/ui/VoteButtons';
 import { Avatar } from '@/components/ui/Avatar';
+import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
 import { Loader2, AlertCircle, ArrowLeft, Bookmark, Calendar } from 'lucide-react';
 import { ROUTES, ERROR_MESSAGES } from '@/lib/constants';
 import { usePostSSE } from '@/hooks/usePostSSE';
@@ -234,8 +235,8 @@ export function PostPageClient({ postId }: PostPageClientProps) {
             </h1>
 
             {/* Content */}
-            <div className="prose prose-lg max-w-none dark:prose-invert mb-6">
-              <div dangerouslySetInnerHTML={{ __html: post.content }} />
+            <div className="mb-6">
+              <MarkdownRenderer content={post.content} proseSize="lg" />
             </div>
 
             {/* Actions */}

@@ -103,10 +103,14 @@ function removeCommentFromTree(comments: Comment[], commentId: string): Comment[
 }
 
 // Helper to update vote count in tree
-function updateVoteInTree(comments: Comment[], targetId: string, voteCount: number): Comment[] {
+function updateVoteInTree(comments: Comment[], targetId: string, voteCount: number, userVote?: 'UPVOTE' | 'DOWNVOTE' | null): Comment[] {
   return comments.map(comment => {
     if (comment.id === targetId) {
-      return { ...comment, voteCount };
+      return { 
+        ...comment, 
+        voteCount,
+        userVote: userVote !== undefined ? (userVote || undefined) : comment.userVote
+      };
     }
     if (comment.replies?.edges && comment.replies.edges.length > 0) {
       return {
@@ -115,7 +119,7 @@ function updateVoteInTree(comments: Comment[], targetId: string, voteCount: numb
           ...comment.replies,
           edges: comment.replies.edges.map(edge => ({
             ...edge,
-            node: updateVoteInTree([edge.node], targetId, voteCount)[0]
+            node: updateVoteInTree([edge.node], targetId, voteCount, userVote)[0]
           }))
         }
       };
@@ -233,7 +237,7 @@ export const CommentTree: React.FC<CommentTreeProps> = ({
     console.log('[CommentTree] Comment vote update received via SSE:', update);
     
     if (update.targetType === 'comment') {
-      setComments(prev => updateVoteInTree(prev, update.targetId, update.voteCount));
+      setComments(prev => updateVoteInTree(prev, update.targetId, update.voteCount, update.userVote));
     }
   }, []);
 
@@ -265,11 +269,15 @@ export const CommentTree: React.FC<CommentTreeProps> = ({
     setComments(prev => removeCommentFromTree(prev, commentId));
   };
 
-  const handleCommentVote = (commentId: string, voteType: VoteType | null) => {
-    const updateUserVote = (comments: Comment[]): Comment[] => {
+  const handleCommentVote = (commentId: string, voteType: VoteType | null, voteCount?: number) => {
+    const updateVote = (comments: Comment[]): Comment[] => {
       return comments.map(comment => {
         if (comment.id === commentId) {
-          return { ...comment, userVote: voteType || undefined };
+          return { 
+            ...comment, 
+            userVote: voteType || undefined,
+            voteCount: voteCount !== undefined ? voteCount : comment.voteCount
+          };
         }
         if (comment.replies?.edges && comment.replies.edges.length > 0) {
           return {
@@ -278,7 +286,7 @@ export const CommentTree: React.FC<CommentTreeProps> = ({
               ...comment.replies,
               edges: comment.replies.edges.map(edge => ({
                 ...edge,
-                node: updateUserVote([edge.node])[0]
+                node: updateVote([edge.node])[0]
               }))
             }
           };
@@ -286,7 +294,7 @@ export const CommentTree: React.FC<CommentTreeProps> = ({
         return comment;
       });
     };
-    setComments(prev => updateUserVote(prev));
+    setComments(prev => updateVote(prev));
   };
 
   const handleReplyStart = (commentId: string) => {

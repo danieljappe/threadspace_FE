@@ -9,7 +9,7 @@ import { GET_POSTS } from '@/graphql/queries';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Loader2, AlertCircle } from 'lucide-react';
 
-const POSTS_PER_PAGE = 10;
+const POSTS_PER_PAGE = 5;
 
 interface PostListProps {
   orderBy?: PostOrder;
@@ -44,6 +44,7 @@ export const PostList: React.FC<PostListProps> = ({
 
     fetchMore({
       variables: {
+        orderBy,
         after: endCursor,
         first: POSTS_PER_PAGE
       },
@@ -63,7 +64,7 @@ export const PostList: React.FC<PostListProps> = ({
         };
       }
     });
-  }, [hasNextPage, isFetchingMore, endCursor, fetchMore]);
+  }, [hasNextPage, isFetchingMore, endCursor, fetchMore, orderBy]);
 
   // Infinite scroll hook
   const { lastElementRef } = useInfiniteScroll({
@@ -149,8 +150,8 @@ export const PostList: React.FC<PostListProps> = ({
         </div>
       ))}
       
-      {/* Loading more indicator */}
-      {isFetchingMore && (
+      {/* Loading more indicator - only show if there are more posts to load */}
+      {isFetchingMore && hasNextPage && (
         <Card>
           <CardContent className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-blue-600 mr-2" />
@@ -159,13 +160,22 @@ export const PostList: React.FC<PostListProps> = ({
         </Card>
       )}
 
-      {/* End of list indicator */}
+      {/* End of list indicator - show when no more posts */}
       {!hasNextPage && posts.length > 0 && (
-        <div className="text-center py-8">
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            You&apos;ve reached the end
-          </p>
-        </div>
+        <Card>
+          <CardContent className="flex items-center justify-center py-8">
+            {isFetchingMore ? (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin text-gray-400 mr-2" />
+                <span className="text-sm text-gray-500 dark:text-gray-400">No more posts</span>
+              </>
+            ) : (
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                You&apos;ve reached the end
+              </span>
+            )}
+          </CardContent>
+        </Card>
       )}
     </div>
   );

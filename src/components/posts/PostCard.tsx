@@ -8,14 +8,20 @@ import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button';
 import { VoteButtons } from '@/components/ui/VoteButtons';
 import { Avatar } from '@/components/ui/Avatar';
-import { VOTE, BOOKMARK_POST, UNBOOKMARK_POST } from '@/graphql/mutations';
+import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
+import { Modal } from '@/components/ui/Modal';
+import { Input, Textarea } from '@/components/ui/Input';
+import { VOTE, BOOKMARK_POST, UNBOOKMARK_POST, EDIT_POST } from '@/graphql/mutations';
 import { usePostSSE } from '@/hooks/usePostSSE';
-import { formatDate, formatNumber, truncateText } from '@/lib/utils';
-import { ROUTES } from '@/lib/constants';
+import { useAuth } from '@/hooks/useAuth';
+import { formatDate, formatNumber, truncateText, getErrorMessage } from '@/lib/utils';
+import { ROUTES, MAX_LENGTHS } from '@/lib/constants';
 import { 
   MessageCircle, 
   Bookmark, 
-  BookmarkCheck
+  BookmarkCheck,
+  Edit2,
+  Type
 } from 'lucide-react';
 
 interface PostCardProps {
@@ -33,14 +39,24 @@ export const PostCard: React.FC<PostCardProps> = ({
   onBookmark,
   className
 }) => {
+  const { user } = useAuth();
   const [isExpanded, setIsExpanded] = useState(showFullContent);
   const [isBookmarking, setIsBookmarking] = useState(false);
   const [voteCount, setVoteCount] = useState(post.voteCount);
   const [userVote, setUserVote] = useState(post.userVote);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(post.title);
+  const [editContent, setEditContent] = useState(post.content);
+  const [editError, setEditError] = useState('');
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   const [voteMutation] = useMutation(VOTE);
   const [bookmarkMutation] = useMutation(BOOKMARK_POST);
   const [unbookmarkMutation] = useMutation(UNBOOKMARK_POST);
+  const [editPost, { loading: isEditingPost }] = useMutation(EDIT_POST);
+
+  // Check if current user is the author
+  const isAuthor = user?.id === post.author.id;
 
   // Handle real-time vote updates via SSE
   const handleVoteUpdate = useCallback((update: { voteCount: number; userVote?: 'UPVOTE' | 'DOWNVOTE' | null }) => {
@@ -97,6 +113,67 @@ export const PostCard: React.FC<PostCardProps> = ({
     }
   };
 
+  const handleEdit = () => {
+    setEditTitle(post.title);
+    setEditContent(post.content);
+    setEditError('');
+    setValidationErrors({});
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditTitle(post.title);
+    setEditContent(post.content);
+    setEditError('');
+    setValidationErrors({});
+  };
+
+  const validateEdit = (): boolean => {
+    const errors: Record<string, string> = {};
+
+    if (!editTitle.trim()) {
+      errors.title = 'Title is required';
+    } else if (editTitle.length > MAX_LENGTHS.POST_TITLE) {
+      errors.title = `Title must be ${MAX_LENGTHS.POST_TITLE} characters or less`;
+    }
+
+    if (!editContent.trim()) {
+      errors.content = 'Content is required';
+    } else if (editContent.length > MAX_LENGTHS.POST_CONTENT) {
+      errors.content = `Content must be ${MAX_LENGTHS.POST_CONTENT} characters or less`;
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSaveEdit = async () => {
+    if (!validateEdit()) {
+      return;
+    }
+
+    try {
+      const { data } = await editPost({
+        variables: {
+          input: {
+            id: post.id,
+            title: editTitle.trim(),
+            content: editContent.trim()
+          }
+        }
+      });
+
+      if (data?.editPost) {
+        setIsEditing(false);
+        // The post will be updated via Apollo cache
+        window.location.reload(); // Simple refresh to show updated content
+      }
+    } catch (error) {
+      setEditError(getErrorMessage(error));
+    }
+  };
+
   const content = isExpanded ? post.content : truncateText(post.content, 200);
   const shouldShowReadMore = !isExpanded && post.content.length > 200;
 
@@ -126,21 +203,33 @@ export const PostCard: React.FC<PostCardProps> = ({
             </div>
           </div>
           
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleBookmark}
-            loading={isBookmarking}
-            leftIcon={
-              post.bookmarked ? (
-                <BookmarkCheck className="h-4 w-4" />
-              ) : (
-                <Bookmark className="h-4 w-4" />
-              )
-            }
-          >
-            {post.bookmarked ? 'Saved' : 'Save'}
-          </Button>
+          <div className="flex items-center space-x-2">
+            {isAuthor && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleEdit}
+                leftIcon={<Edit2 className="h-4 w-4" />}
+              >
+                Edit
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleBookmark}
+              loading={isBookmarking}
+              leftIcon={
+                post.bookmarked ? (
+                  <BookmarkCheck className="h-4 w-4" />
+                ) : (
+                  <Bookmark className="h-4 w-4" />
+                )
+              }
+            >
+              {post.bookmarked ? 'Saved' : 'Save'}
+            </Button>
+          </div>
         </div>
       </CardHeader>
 
@@ -151,9 +240,7 @@ export const PostCard: React.FC<PostCardProps> = ({
           </h2>
         </Link>
         
-        <div className="prose prose-sm max-w-none dark:prose-invert">
-          <div dangerouslySetInnerHTML={{ __html: content }} />
-        </div>
+        <MarkdownRenderer content={content} proseSize="sm" />
         
         {shouldShowReadMore && (
           <button
@@ -188,6 +275,76 @@ export const PostCard: React.FC<PostCardProps> = ({
           </Link>
         </div>
       </CardFooter>
+
+      {/* Edit Modal */}
+      <Modal
+        isOpen={isEditing}
+        onClose={handleCancelEdit}
+        title="Edit Post"
+        size="lg"
+      >
+        <div className="space-y-4">
+          {editError && (
+            <div className="p-3 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400 rounded-lg">
+              {editError}
+            </div>
+          )}
+
+          <Input
+            type="text"
+            label="Title"
+            placeholder="What's your post about?"
+            value={editTitle}
+            onChange={(e) => {
+              setEditTitle(e.target.value);
+              if (validationErrors.title) {
+                setValidationErrors(prev => ({ ...prev, title: '' }));
+              }
+            }}
+            leftIcon={<Type className="h-4 w-4" />}
+            error={validationErrors.title}
+            helperText={`${editTitle.length}/${MAX_LENGTHS.POST_TITLE} characters`}
+            required
+            disabled={isEditingPost}
+          />
+
+          <Textarea
+            label="Content"
+            placeholder="Share your thoughts, ideas, or questions..."
+            value={editContent}
+            onChange={(e) => {
+              setEditContent(e.target.value);
+              if (validationErrors.content) {
+                setValidationErrors(prev => ({ ...prev, content: '' }));
+              }
+            }}
+            rows={8}
+            error={validationErrors.content}
+            helperText={`${editContent.length}/${MAX_LENGTHS.POST_CONTENT} characters`}
+            required
+            disabled={isEditingPost}
+          />
+
+          <div className="flex justify-end space-x-3 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleCancelEdit}
+              disabled={isEditingPost}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSaveEdit}
+              loading={isEditingPost}
+              disabled={isEditingPost || !editTitle.trim() || !editContent.trim()}
+            >
+              Save Changes
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </Card>
   );
 };

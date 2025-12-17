@@ -72,6 +72,8 @@ const cache = new InMemoryCache({
               return {
                 ...incoming,
                 edges: [...existing.edges, ...incoming.edges],
+                pageInfo: incoming.pageInfo, // Preserve pageInfo from incoming (has updated endCursor)
+                totalCount: incoming.totalCount, // Preserve totalCount from incoming
               };
             } else {
               // New query - replace
@@ -89,6 +91,8 @@ const cache = new InMemoryCache({
               return {
                 ...incoming,
                 edges: [...existing.edges, ...incoming.edges],
+                pageInfo: incoming.pageInfo,
+                totalCount: incoming.totalCount,
               };
             } else {
               return incoming;

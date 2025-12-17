@@ -92,6 +92,33 @@ export const CREATE_POST = gql`
   }
 `;
 
+export const EDIT_POST = gql`
+  mutation EditPost($input: UpdatePostInput!) {
+    editPost(input: $input) {
+      id
+      title
+      content
+      voteCount
+      userVote
+      bookmarked
+      createdAt
+      updatedAt
+      author {
+        id
+        username
+        avatarUrl
+        reputation
+        isVerified
+      }
+      comments(first: 0) {
+        pageInfo {
+          hasNextPage
+        }
+      }
+    }
+  }
+`;
+
 export const DELETE_POST = gql`
   mutation DeletePost($id: ID!) {
     deletePost(id: $id)
@@ -102,6 +129,45 @@ export const DELETE_POST = gql`
 export const CREATE_COMMENT = gql`
   mutation CreateComment($input: CreateCommentInput!) {
     createComment(input: $input) {
+      id
+      content
+      depth
+      voteCount
+      userVote
+      isEdited
+      createdAt
+      updatedAt
+      author {
+        id
+        username
+        avatarUrl
+        reputation
+        isVerified
+      }
+      post {
+        id
+        title
+      }
+      parent {
+        id
+        content
+        author {
+          id
+          username
+        }
+      }
+      replies(first: 0) {
+        pageInfo {
+          hasNextPage
+        }
+      }
+    }
+  }
+`;
+
+export const EDIT_COMMENT = gql`
+  mutation EditComment($input: UpdateCommentInput!) {
+    editComment(input: $input) {
       id
       content
       depth
